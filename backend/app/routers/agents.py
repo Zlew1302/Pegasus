@@ -14,6 +14,7 @@ from app.schemas.agent import (
     AgentSpawnRequest,
     AgentTypeResponse,
 )
+from app.services.agent_service import get_running_agent, launch_agent_task
 
 router = APIRouter(prefix="/api/agents", tags=["agents"])
 
@@ -82,8 +83,8 @@ async def spawn_agent(data: AgentSpawnRequest, db: AsyncSession = Depends(get_db
     await db.commit()
     await db.refresh(instance)
 
-    # Agent execution will be started by the caller (agent_service)
-    # This endpoint just creates the instance record
+    # Launch agent as background task
+    launch_agent_task(instance.id)
 
     return AgentInstanceResponse.model_validate(instance)
 
@@ -110,6 +111,9 @@ async def pause_agent(instance_id: str, db: AsyncSession = Depends(get_db)):
     if instance.status != "running":
         raise HTTPException(status_code=422, detail="Agent laeuft nicht")
     instance.status = "paused"
+    agent = get_running_agent(instance_id)
+    if agent:
+        agent.pause()
     await db.commit()
     await db.refresh(instance)
     return AgentInstanceResponse.model_validate(instance)
@@ -126,6 +130,9 @@ async def resume_agent(instance_id: str, db: AsyncSession = Depends(get_db)):
     if instance.status != "paused":
         raise HTTPException(status_code=422, detail="Agent ist nicht pausiert")
     instance.status = "running"
+    agent = get_running_agent(instance_id)
+    if agent:
+        agent.resume()
     await db.commit()
     await db.refresh(instance)
     return AgentInstanceResponse.model_validate(instance)
@@ -143,6 +150,9 @@ async def cancel_agent(instance_id: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=422, detail="Agent ist bereits beendet")
     instance.status = "cancelled"
     instance.completed_at = datetime.utcnow()
+    agent = get_running_agent(instance_id)
+    if agent:
+        agent.cancel()
     await db.commit()
     await db.refresh(instance)
     return AgentInstanceResponse.model_validate(instance)
@@ -162,7 +172,7 @@ async def send_message_to_agent(
         raise HTTPException(status_code=404, detail="Agent-Instanz nicht gefunden")
     if instance.status not in ("running", "paused", "waiting_input"):
         raise HTTPException(status_code=422, detail="Agent akzeptiert keine Nachrichten")
-
-    # Message will be picked up by the agent's message queue
-    # For now, we just acknowledge receipt
+    agent = get_running_agent(instance_id)
+    if agent:
+        agent.add_message(data.message)
     return AgentInstanceResponse.model_validate(instance)
