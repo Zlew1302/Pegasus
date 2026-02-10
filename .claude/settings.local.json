@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node:*)",
+      "Bash(npm:*)",
+      "Bash(pip3:*)",
+      "Bash(brew list:*)",
+      "Bash(/usr/bin/python3:*)",
+      "Bash(pnpm --version:*)",
+      "Bash(brew:*)",
+      "Bash(export PATH=\"/opt/homebrew/opt/node@20/bin:/opt/homebrew/bin:$PATH\")",
+      "Bash(python3.12:*)",
+      "Bash(/opt/homebrew/bin/python3.12:*)",
+      "Bash(source:*)",
+      "Bash(pip install:*)",
+      "Bash(timeout 5 uvicorn:*)",
+      "Bash(python:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}
