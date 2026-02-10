@@ -22,7 +22,9 @@
       "Bash(npx:*)",
       "Bash(export PATH=\"/opt/homebrew/opt/node@20/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH\")",
       "Bash(pnpm add:*)",
-      "Bash(pnpm build:*)"
+      "Bash(pnpm build:*)",
+      "Bash(alembic revision:*)",
+      "Bash(alembic upgrade:*)"
     ]
   }
 }
