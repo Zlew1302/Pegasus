@@ -42,4 +42,5 @@ class AgentInstance(Base):
     thought_log: Mapped[Optional[str]] = mapped_column(Text)  # JSON array
     started_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    parent_instance_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
     total_cost_cents: Mapped[int] = mapped_column(Integer, default=0)

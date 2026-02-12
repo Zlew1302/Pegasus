@@ -1,0 +1,48 @@
+"use client";
+
+import { Calendar, ZoomIn, ZoomOut, Eye, EyeOff } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+type ZoomLevel = "week" | "month" | "quarter";
+
+interface GanttToolbarProps {
+  zoom: ZoomLevel;
+  onZoomChange: (zoom: ZoomLevel) => void;
+  showCompleted: boolean;
+  onToggleCompleted: () => void;
+  onScrollToToday: () => void;
+}
+
+export function GanttToolbar({
+  zoom,
+  onZoomChange,
+  showCompleted,
+  onToggleCompleted,
+  onScrollToToday,
+}: GanttToolbarProps) {
+  return (
+    <div className="flex items-center gap-2 border-b border-border px-4 py-2">
+      <div className="flex gap-1">
+        {(["week", "month", "quarter"] as ZoomLevel[]).map((level) => (
+          <Button
+            key={level}
+            variant={zoom === level ? "default" : "outline"}
+            size="sm"
+            onClick={() => onZoomChange(level)}
+            className={zoom === level ? "bg-[hsl(var(--accent-orange))] text-white" : ""}
+          >
+            {level === "week" ? "Woche" : level === "month" ? "Monat" : "Quartal"}
+          </Button>
+        ))}
+      </div>
+      <Button variant="outline" size="sm" onClick={onScrollToToday} className="gap-1.5">
+        <Calendar className="h-3.5 w-3.5" />
+        Heute
+      </Button>
+      <Button variant="outline" size="sm" onClick={onToggleCompleted} className="gap-1.5">
+        {showCompleted ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+        {showCompleted ? "Erledigte ausblenden" : "Erledigte einblenden"}
+      </Button>
+    </div>
+  );
+}

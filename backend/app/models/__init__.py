@@ -13,3 +13,9 @@ from app.models.output import TaskOutput  # noqa: E402, F401
 from app.models.approval import Approval  # noqa: E402, F401
 from app.models.execution import ExecutionStep  # noqa: E402, F401
 from app.models.notification import Notification  # noqa: E402, F401
+from app.models.user import UserProfile, UserSetting, UserTodo  # noqa: E402, F401
+from app.models.team import Team, TeamMember  # noqa: E402, F401
+from app.models.budget import ProjectBudget, ApiKey  # noqa: E402, F401
+from app.models.comment import Comment  # noqa: E402, F401
+from app.models.saved_view import SavedView  # noqa: E402, F401
+from app.models.document import Document, Block  # noqa: E402, F401

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -25,6 +26,7 @@
   --radius: 0.5rem;
   --agent-glow: 199 89% 48%;
   --agent-glow-color: hsl(199 89% 48%);
+  --accent-orange: 24 95% 53%;
 }
 
 @theme inline {
@@ -64,4 +66,122 @@ body {
   * {
     @apply border-border;
   }
+}
+
+/* react-grid-layout */
+.react-grid-layout {
+  position: relative;
+  transition: height 200ms ease;
+}
+.react-grid-item {
+  transition: all 200ms ease;
+  transition-property: left, top, width, height;
+}
+.react-grid-item.cssTransforms {
+  transition-property: transform, width, height;
+}
+.react-grid-item.resizing {
+  opacity: 0.9;
+  z-index: 3;
+}
+.react-grid-item.react-draggable-dragging {
+  transition: none;
+  z-index: 3;
+}
+.react-grid-placeholder {
+  background: hsl(var(--accent-orange));
+  opacity: 0.15;
+  border-radius: var(--radius);
+  transition-duration: 100ms;
+  z-index: 2;
+}
+.react-grid-item > .react-resizable-handle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+}
+.react-grid-item > .react-resizable-handle::after {
+  content: "";
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 5px;
+  height: 5px;
+  border-right: 2px solid hsl(var(--muted-foreground));
+  border-bottom: 2px solid hsl(var(--muted-foreground));
+}
+.react-grid-item > .react-resizable-handle.react-resizable-handle-se {
+  bottom: 0;
+  right: 0;
+  cursor: se-resize;
+}
+
+/* Widget close button — visible on hover */
+.widget-close-btn {
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.react-grid-item:hover .widget-close-btn {
+  opacity: 1;
+}
+
+/* Drag handle cursor */
+.drag-handle {
+  cursor: grab;
+}
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Agent Output Markdown (prose-invert) */
+.prose.prose-invert {
+  --tw-prose-body: hsl(var(--foreground));
+  --tw-prose-headings: hsl(var(--foreground));
+  --tw-prose-links: hsl(var(--agent-glow));
+  --tw-prose-bold: hsl(var(--foreground));
+  --tw-prose-counters: hsl(var(--muted-foreground));
+  --tw-prose-bullets: hsl(var(--muted-foreground));
+  --tw-prose-hr: hsl(var(--border));
+  --tw-prose-quotes: hsl(var(--muted-foreground));
+  --tw-prose-quote-borders: hsl(var(--border));
+  --tw-prose-code: hsl(var(--accent-orange));
+  --tw-prose-pre-code: hsl(var(--foreground));
+  --tw-prose-pre-bg: hsl(var(--muted));
+  --tw-prose-th-borders: hsl(var(--border));
+  --tw-prose-td-borders: hsl(var(--border));
+}
+
+.prose.prose-invert code:not(pre code) {
+  background: hsl(var(--muted));
+  padding: 0.15em 0.35em;
+  border-radius: 0.25rem;
+  font-size: 0.85em;
+}
+
+.prose.prose-invert pre {
+  background: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.5rem;
+}
+
+.prose.prose-invert a {
+  text-decoration-color: hsl(var(--agent-glow) / 0.4);
+}
+
+.prose.prose-invert a:hover {
+  text-decoration-color: hsl(var(--agent-glow));
+}
+
+.prose.prose-invert table {
+  border-collapse: collapse;
+}
+
+.prose.prose-invert th,
+.prose.prose-invert td {
+  border: 1px solid hsl(var(--border));
+  padding: 0.5em 0.75em;
+}
+
+.prose.prose-invert th {
+  background: hsl(var(--muted));
 }

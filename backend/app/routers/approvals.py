@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
@@ -8,6 +8,7 @@ from app.database import get_db
 from app.models.approval import Approval
 from app.models.task import Task
 from app.schemas.approval import ApprovalResolve, ApprovalResponse
+from app.services.agent_service import resume_agent_with_feedback
 
 router = APIRouter(prefix="/api/approvals", tags=["approvals"])
 
@@ -55,7 +56,7 @@ async def resolve_approval(
 
     approval.status = data.status
     approval.reviewer_comment = data.comment
-    approval.resolved_at = datetime.utcnow()
+    approval.resolved_at = datetime.now(UTC)
 
     # Update task status based on approval resolution
     task_result = await db.execute(
@@ -72,4 +73,9 @@ async def resolve_approval(
 
     await db.commit()
     await db.refresh(approval)
+
+    # Trigger agent revision on changes_requested
+    if data.status == "changes_requested" and approval.agent_instance_id and data.comment:
+        resume_agent_with_feedback(approval.agent_instance_id, data.comment)
+
     return ApprovalResponse.model_validate(approval)

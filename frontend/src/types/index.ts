@@ -33,6 +33,11 @@ export interface Project {
   description: string | null;
   goal: string | null;
   status: string;
+  phase: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  budget_cents: number;
+  team_id: string | null;
   is_incognito: boolean;
   created_at: string;
   updated_at: string;
@@ -56,6 +61,7 @@ export interface Task {
   actual_duration_minutes: number | null;
   sort_order: number;
   tags: string | null;
+  start_date: string | null;
   deadline: string | null;
   created_at: string;
   updated_at: string;
@@ -85,7 +91,36 @@ export interface AgentInstance {
   thought_log: string | null;
   started_at: string | null;
   completed_at: string | null;
+  parent_instance_id: string | null;
   total_cost_cents: number;
+}
+
+export interface ExecutionStep {
+  id: string;
+  agent_instance_id: string;
+  step_number: number;
+  step_type: string;
+  description: string | null;
+  model: string | null;
+  tokens_in: number | null;
+  tokens_out: number | null;
+  cost_cents: number | null;
+  duration_ms: number | null;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
+export interface AgentSuggestion {
+  agent_type_id: string;
+  agent_type_name: string;
+  confidence: number;
+  reason: string;
+}
+
+export interface ToolCallEvent {
+  tool_name: string;
+  parameters: Record<string, unknown>;
+  iteration: number;
 }
 
 export interface TaskOutput {
@@ -123,6 +158,241 @@ export interface TaskHistory {
   changed_at: string;
 }
 
+// --- Dependency Types ---
+
+export interface TaskDependency {
+  task_id: string;
+  depends_on_task_id: string;
+  depends_on_title: string | null;
+  depends_on_status: string | null;
+}
+
+// --- Comment Types ---
+
+export interface Comment {
+  id: string;
+  task_id: string;
+  author_type: string;
+  author_name: string;
+  content: string;
+  created_at: string;
+}
+
+// --- Notification Types ---
+
+export interface Notification {
+  id: string;
+  user_id: string | null;
+  type: string;
+  priority: string;
+  title: string;
+  message: string | null;
+  link: string | null;
+  bundle_group: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+// --- Team Types ---
+
+export interface Team {
+  id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+  member_count?: number;
+}
+
+export interface TeamMember {
+  id: string;
+  team_id: string;
+  member_type: string;
+  member_id: string;
+  member_name: string | null;
+  role: string;
+  joined_at: string;
+}
+
+// --- Saved View Types ---
+
+export interface SavedView {
+  id: string;
+  name: string;
+  project_id: string;
+  filter_json: string;
+  sort_order: number;
+  created_at: string;
+}
+
+// --- Dashboard Types ---
+
+export interface DashboardStats {
+  active_agents: number;
+  pending_inputs: number;
+  weekly_token_cost_cents: number;
+  tasks_completed_this_week: number;
+}
+
+export interface ActivityEntry {
+  instance_id: string;
+  agent_name: string;
+  task_title: string;
+  status: string;
+  started_at: string | null;
+  progress_percent: number;
+}
+
+export interface CostEntry {
+  date: string;
+  cost_cents: number;
+  project_id: string | null;
+  project_title: string | null;
+}
+
+export interface ProductivityEntry {
+  date: string;
+  tasks_completed: number;
+}
+
+// --- Todo Types ---
+
+export interface Todo {
+  id: string;
+  title: string;
+  sort_order: number;
+  is_completed: boolean;
+  project_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// --- Profile Types ---
+
+export interface UserProfile {
+  id: string;
+  display_name: string;
+  avatar_url: string | null;
+  global_system_prompt: string | null;
+  preferences_json: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ApiKeyEntry {
+  id: string;
+  provider: string;
+  key_name: string;
+  key_masked: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface AuditEntry {
+  timestamp: string;
+  actor_type: string;
+  actor_id: string | null;
+  action: string;
+  target_type: string;
+  target_title: string;
+  details: string | null;
+  tokens: number | null;
+  cost_cents: number | null;
+}
+
+export interface TokenUsageEntry {
+  group_id: string;
+  group_name: string;
+  total_tokens_in: number;
+  total_tokens_out: number;
+  total_cost_cents: number;
+}
+
+// --- Document / Block Types ---
+
+export type BlockType =
+  | "paragraph"
+  | "heading_1"
+  | "heading_2"
+  | "heading_3"
+  | "bullet_list"
+  | "numbered_list"
+  | "todo"
+  | "code"
+  | "divider"
+  | "quote"
+  | "agent"
+  | "image"
+  | "table";
+
+export interface Block {
+  id: string;
+  document_id: string;
+  block_type: BlockType;
+  content: string | null;
+  sort_order: number;
+  indent_level: number;
+  meta_json: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Document {
+  id: string;
+  project_id: string;
+  title: string;
+  icon: string | null;
+  is_pinned: boolean;
+  created_at: string;
+  updated_at: string;
+  block_count: number;
+}
+
+export interface DocumentDetail {
+  id: string;
+  project_id: string;
+  title: string;
+  icon: string | null;
+  is_pinned: boolean;
+  created_at: string;
+  updated_at: string;
+  blocks: Block[];
+}
+
+export const BLOCK_TYPE_CONFIG: Record<
+  BlockType,
+  { label: string; icon: string }
+> = {
+  paragraph: { label: "Text", icon: "Type" },
+  heading_1: { label: "Überschrift 1", icon: "Heading1" },
+  heading_2: { label: "Überschrift 2", icon: "Heading2" },
+  heading_3: { label: "Überschrift 3", icon: "Heading3" },
+  bullet_list: { label: "Aufzählung", icon: "List" },
+  numbered_list: { label: "Nummerierte Liste", icon: "ListOrdered" },
+  todo: { label: "Aufgabe", icon: "CheckSquare" },
+  code: { label: "Code", icon: "Code" },
+  divider: { label: "Trennlinie", icon: "Minus" },
+  quote: { label: "Zitat", icon: "Quote" },
+  agent: { label: "Agent-Block", icon: "Bot" },
+  image: { label: "Bild", icon: "Image" },
+  table: { label: "Tabelle", icon: "Table" },
+};
+
+// --- Widget Layout ---
+
+export interface WidgetLayout {
+  i: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  static?: boolean;
+  minW?: number;
+  minH?: number;
+  maxW?: number;
+  maxH?: number;
+}
+
 // Column configuration for Kanban board
 export const COLUMNS: { id: TaskStatus; title: string }[] = [
   { id: "backlog", title: "Backlog" },
@@ -141,4 +411,14 @@ export const PRIORITY_CONFIG: Record<
   high: { label: "Hoch", color: "text-orange-500" },
   medium: { label: "Mittel", color: "text-yellow-500" },
   low: { label: "Niedrig", color: "text-slate-400" },
+};
+
+// Tag configuration for tasks
+export const TAG_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  MARKETING: { label: "Marketing", color: "text-pink-400", bg: "bg-pink-500/10" },
+  RESEARCH: { label: "Research", color: "text-blue-400", bg: "bg-blue-500/10" },
+  DEV: { label: "Development", color: "text-green-400", bg: "bg-green-500/10" },
+  DESIGN: { label: "Design", color: "text-purple-400", bg: "bg-purple-500/10" },
+  DATA: { label: "Daten", color: "text-cyan-400", bg: "bg-cyan-500/10" },
+  CONTENT: { label: "Content", color: "text-amber-400", bg: "bg-amber-500/10" },
 };

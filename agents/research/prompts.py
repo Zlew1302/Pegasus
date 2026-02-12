@@ -31,8 +31,12 @@ Erstelle:
 2. Fuer jeden Suchbegriff: Was genau suchen wir? Welche Art von Quellen?
 3. Eine sinnvolle Reihenfolge der Recherche"""
 
+STEP_CONTEXT = """Lies den Projekt-Kontext um die Aufgabe besser einordnen zu koennen.
+Nutze das read_project_context Tool um Informationen zum Projekt zu laden."""
+
 STEP_RESEARCH = """Fuehre eine gruendliche Recherche zu den folgenden Themen durch.
-Nutze dein Wissen um umfassende und aktuelle Informationen zusammenzutragen.
+Nutze das web_search Tool um aktuelle Informationen aus dem Internet zu finden.
+Fuehre mehrere Suchen zu verschiedenen Aspekten durch.
 
 Suchstrategie:
 {search_plan}
@@ -40,8 +44,9 @@ Suchstrategie:
 Aufgabe: {title}
 
 Fuer jedes Thema:
+- Nutze web_search um relevante Informationen zu finden
 - Sammle relevante Fakten, Daten und Erkenntnisse
-- Notiere die Quellen/Grundlagen deines Wissens
+- Notiere die URLs der gefundenen Quellen
 - Bewerte die Zuverlaessigkeit der Informationen
 - Markiere Unsicherheiten oder Wissenluecken"""
 

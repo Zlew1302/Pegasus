@@ -43,6 +43,7 @@ class Task(Base):
     actual_duration_minutes: Mapped[Optional[int]] = mapped_column(Integer)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     tags: Mapped[Optional[str]] = mapped_column(Text)  # JSON array as string
+    start_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
     deadline: Mapped[Optional[datetime]] = mapped_column(DateTime)
     created_by: Mapped[Optional[str]] = mapped_column(String(36))
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

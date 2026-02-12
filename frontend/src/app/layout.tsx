@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { TopNav } from "@/components/layout/top-nav";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -20,7 +21,10 @@ export default function RootLayout({
   return (
     <html lang="de" className="dark" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
-        {children}
+        <div className="flex h-screen flex-col">
+          <TopNav />
+          <main className="flex-1 overflow-hidden">{children}</main>
+        </div>
       </body>
     </html>
   );

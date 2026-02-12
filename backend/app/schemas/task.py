@@ -15,6 +15,7 @@ class TaskCreate(BaseModel):
     autonomy_level: str = "needs_approval"
     estimated_duration_minutes: Optional[int] = None
     tags: Optional[str] = None
+    start_date: Optional[datetime] = None
     deadline: Optional[datetime] = None
     parent_task_id: Optional[str] = None
 
@@ -29,6 +30,7 @@ class TaskUpdate(BaseModel):
     autonomy_level: Optional[str] = None
     estimated_duration_minutes: Optional[int] = None
     tags: Optional[str] = None
+    start_date: Optional[datetime] = None
     deadline: Optional[datetime] = None
 
 
@@ -60,6 +62,7 @@ class TaskResponse(BaseModel):
     actual_duration_minutes: Optional[int]
     sort_order: int
     tags: Optional[str]
+    start_date: Optional[datetime]
     deadline: Optional[datetime]
     created_at: datetime
     updated_at: datetime

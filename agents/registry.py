@@ -1,8 +1,10 @@
 from agents.base import BaseAgent
+from agents.planning.agent import PlanningAgent
 from agents.research.agent import ResearchAgent
 
 AGENT_REGISTRY: dict[str, type[BaseAgent]] = {
     "agent-research-001": ResearchAgent,
+    "agent-planning-001": PlanningAgent,
 }
 
 

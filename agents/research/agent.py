@@ -1,12 +1,14 @@
-"""Research Agent — 5-step multi-step workflow."""
+"""Research Agent — multi-step workflow with tool use."""
 
 import time
-from datetime import datetime
+from datetime import datetime, UTC
 
 from agents.base import BaseAgent
+from agents.tools.registry import get_tools_for_agent
 from agents.research.prompts import (
     RESEARCH_SYSTEM_PROMPT,
     STEP_ANALYZE,
+    STEP_CONTEXT,
     STEP_PLAN,
     STEP_REPORT,
     STEP_RESEARCH,
@@ -14,6 +16,7 @@ from agents.research.prompts import (
 )
 
 STEPS = [
+    {"name": "Projekt-Kontext laden", "type": "context"},
     {"name": "Aufgabe analysieren", "type": "analysis"},
     {"name": "Suchstrategie entwickeln", "type": "planning"},
     {"name": "Recherche durchfuehren", "type": "research"},
@@ -21,22 +24,15 @@ STEPS = [
     {"name": "Bericht erstellen", "type": "output"},
 ]
 
-# Approximate cost per 1M tokens (Sonnet)
-COST_PER_1M_INPUT = 300  # $3.00 = 300 cents
-COST_PER_1M_OUTPUT = 1500  # $15.00 = 1500 cents
-
-
-def estimate_cost_cents(tokens_in: int, tokens_out: int) -> int:
-    return int(
-        (tokens_in / 1_000_000 * COST_PER_1M_INPUT)
-        + (tokens_out / 1_000_000 * COST_PER_1M_OUTPUT)
-    )
-
 
 class ResearchAgent(BaseAgent):
     async def run(self) -> str:
         total = len(STEPS)
         briefing = self.briefing
+        sys_prompt = self.system_prompt or RESEARCH_SYSTEM_PROMPT
+
+        # Get available tools from agent type config
+        tools = get_tools_for_agent(briefing.tools_json)
 
         criteria_section = ""
         if briefing.acceptance_criteria:
@@ -46,93 +42,124 @@ class ResearchAgent(BaseAgent):
         if briefing.project_goal:
             context_section = f"Projekt-Kontext: {briefing.project_title} — {briefing.project_goal}"
 
-        # Step 1: Analyze task
+        # Step 1: Load project context (using tools)
         await self._start_step(1, total, STEPS[0])
+        if tools:
+            project_context = await self._call_claude_with_tools(
+                STEP_CONTEXT,
+                tools=tools,
+                system=sys_prompt,
+            )
+        else:
+            project_context = context_section or "Kein Projekt-Kontext verfuegbar."
+        await self._complete_step(1, "Projekt-Kontext geladen")
+
+        # Step 2: Analyze task
+        await self._start_step(2, total, STEPS[1])
         analysis = await self._call_claude(
             STEP_ANALYZE.format(
                 title=briefing.task_title,
                 description=briefing.task_description or "Keine Beschreibung",
                 criteria_section=criteria_section,
-                context_section=context_section,
-            )
+                context_section=project_context[:1000],
+            ),
+            system=sys_prompt,
         )
-        await self._complete_step(1, "Kernfragen identifiziert")
+        await self._complete_step(2, "Kernfragen identifiziert")
 
-        # Step 2: Develop search strategy
-        await self._start_step(2, total, STEPS[1])
-        search_plan = await self._call_claude(
-            STEP_PLAN.format(analysis=analysis)
-        )
-        await self._complete_step(2, "Suchstrategie erstellt")
-
-        # Step 3: Conduct research
+        # Step 3: Develop search strategy
         await self._start_step(3, total, STEPS[2])
-        research_results = await self._call_claude(
-            STEP_RESEARCH.format(
-                search_plan=search_plan,
-                title=briefing.task_title,
-            )
+        search_plan = await self._call_claude(
+            STEP_PLAN.format(analysis=analysis),
+            system=sys_prompt,
         )
-        await self._complete_step(3, "Recherche abgeschlossen")
+        await self._complete_step(3, "Suchstrategie erstellt")
 
-        # Step 4: Synthesize
+        # Step 4: Conduct research (using tools for web search)
         await self._start_step(4, total, STEPS[3])
+        if tools:
+            research_results = await self._call_claude_with_tools(
+                STEP_RESEARCH.format(
+                    search_plan=search_plan,
+                    title=briefing.task_title,
+                ),
+                tools=tools,
+                system=sys_prompt,
+            )
+        else:
+            research_results = await self._call_claude(
+                STEP_RESEARCH.format(
+                    search_plan=search_plan,
+                    title=briefing.task_title,
+                ),
+                system=sys_prompt,
+            )
+        await self._complete_step(4, "Recherche abgeschlossen")
+
+        # Step 5: Synthesize
+        await self._start_step(5, total, STEPS[4])
         synthesis = await self._call_claude(
             STEP_SYNTHESIZE.format(
-                research_results=research_results,
+                research_results=research_results[:4000],
                 title=briefing.task_title,
                 criteria_section=criteria_section,
-            )
+            ),
+            system=sys_prompt,
         )
-        await self._complete_step(4, "Synthese erstellt")
+        await self._complete_step(5, "Synthese erstellt")
 
-        # Step 5: Create report
-        await self._start_step(5, total, STEPS[4])
+        # Step 6: Create report
+        await self._start_step(6, total, STEPS[5])
         report = await self._call_claude(
             STEP_REPORT.format(
                 title=briefing.task_title,
                 description=briefing.task_description or "",
                 synthesis=synthesis,
-            )
+            ),
+            system=sys_prompt,
         )
-        await self._complete_step(5, "Bericht erstellt")
+        await self._complete_step(6, "Bericht erstellt")
 
         return report
 
-    async def _call_claude(self, user_message: str) -> str:
+    async def _call_claude(self, user_message: str, system: str | None = None) -> str:
         """Call Claude API with streaming, emitting thought events."""
         await self._check_pause_cancel()
 
+        sys_prompt = system or self.system_prompt or RESEARCH_SYSTEM_PROMPT
         start_time = time.time()
         accumulated = ""
         last_emit_len = 0
 
-        async with self.client.messages.stream(
-            model="claude-sonnet-4-20250514",
-            max_tokens=4096,
-            system=RESEARCH_SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": user_message}],
-        ) as stream:
-            async for text in stream.text_stream:
-                accumulated += text
-                # Emit thought fragments every ~150 chars
-                if len(accumulated) - last_emit_len >= 150:
-                    last_emit_len = len(accumulated)
-                    await self.emit("thought", {
-                        "text": accumulated[-300:],
-                        "timestamp": datetime.utcnow().isoformat(),
-                    })
+        async def _do_stream():
+            nonlocal accumulated, last_emit_len
+            async with self.client.messages.stream(
+                model=self.model,
+                max_tokens=self.max_tokens,
+                system=sys_prompt,
+                messages=[{"role": "user", "content": user_message}],
+            ) as stream:
+                async for text in stream.text_stream:
+                    accumulated += text
+                    if len(accumulated) - last_emit_len >= 150:
+                        last_emit_len = len(accumulated)
+                        await self._append_thought(accumulated[-300:])
+                        await self.emit("thought", {
+                            "text": accumulated[-300:],
+                            "timestamp": datetime.now(UTC).isoformat(),
+                        })
+            return await stream.get_final_message()
 
-        message = await stream.get_final_message()
+        message = await self._call_with_retry(lambda: _do_stream())
         duration_ms = int((time.time() - start_time) * 1000)
         tokens_in = message.usage.input_tokens
         tokens_out = message.usage.output_tokens
-        cost = estimate_cost_cents(tokens_in, tokens_out)
+        cost = self._estimate_cost(tokens_in, tokens_out)
 
         await self._record_execution_step(
             step_type="llm_call",
             description=f"Claude API Call ({tokens_in}in/{tokens_out}out)",
-            model="claude-sonnet-4-20250514",
+            model=self.model,
             tokens_in=tokens_in,
             tokens_out=tokens_out,
             cost_cents=cost,

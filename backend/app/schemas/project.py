@@ -9,6 +9,11 @@ class ProjectCreate(BaseModel):
     description: Optional[str] = None
     goal: Optional[str] = None
     status: str = "active"
+    phase: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    budget_cents: int = 0
+    team_id: Optional[str] = None
 
 
 class ProjectUpdate(BaseModel):
@@ -16,6 +21,11 @@ class ProjectUpdate(BaseModel):
     description: Optional[str] = None
     goal: Optional[str] = None
     status: Optional[str] = None
+    phase: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    budget_cents: Optional[int] = None
+    team_id: Optional[str] = None
 
 
 class ProjectResponse(BaseModel):
@@ -26,6 +36,11 @@ class ProjectResponse(BaseModel):
     description: Optional[str]
     goal: Optional[str]
     status: str
+    phase: Optional[str]
+    start_date: Optional[datetime]
+    end_date: Optional[datetime]
+    budget_cents: int
+    team_id: Optional[str]
     is_incognito: bool
     created_at: datetime
     updated_at: datetime

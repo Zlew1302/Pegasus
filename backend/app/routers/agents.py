@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -8,13 +8,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.agent import AgentInstance, AgentType
 from app.models.task import Task
+from app.models.execution import ExecutionStep
 from app.schemas.agent import (
     AgentInstanceResponse,
     AgentMessageRequest,
     AgentSpawnRequest,
+    AgentSuggestionResponse,
     AgentTypeResponse,
+    ExecutionStepResponse,
 )
+from app.config import settings
 from app.services.agent_service import get_running_agent, launch_agent_task
+from app.services.assignment_service import suggest_agents_for_task
 
 router = APIRouter(prefix="/api/agents", tags=["agents"])
 
@@ -36,6 +41,13 @@ async def get_agent_type(type_id: str, db: AsyncSession = Depends(get_db)):
 
 @router.post("/spawn", response_model=AgentInstanceResponse, status_code=201)
 async def spawn_agent(data: AgentSpawnRequest, db: AsyncSession = Depends(get_db)):
+    # Check API key
+    if not settings.ANTHROPIC_API_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="ANTHROPIC_API_KEY nicht konfiguriert. Bitte in .env eintragen.",
+        )
+
     # Verify agent type exists
     at_result = await db.execute(
         select(AgentType).where(AgentType.id == data.agent_type_id)
@@ -72,7 +84,7 @@ async def spawn_agent(data: AgentSpawnRequest, db: AsyncSession = Depends(get_db
         agent_type_id=data.agent_type_id,
         task_id=data.task_id,
         status="initializing",
-        started_at=datetime.utcnow(),
+        started_at=datetime.now(UTC),
     )
     db.add(instance)
 
@@ -149,7 +161,7 @@ async def cancel_agent(instance_id: str, db: AsyncSession = Depends(get_db)):
     if instance.status in ("completed", "failed", "cancelled"):
         raise HTTPException(status_code=422, detail="Agent ist bereits beendet")
     instance.status = "cancelled"
-    instance.completed_at = datetime.utcnow()
+    instance.completed_at = datetime.now(UTC)
     agent = get_running_agent(instance_id)
     if agent:
         agent.cancel()
@@ -176,3 +188,47 @@ async def send_message_to_agent(
     if agent:
         agent.add_message(data.message)
     return AgentInstanceResponse.model_validate(instance)
+
+
+@router.get("/suggest/{task_id}", response_model=list[AgentSuggestionResponse])
+async def suggest_agent(task_id: str, db: AsyncSession = Depends(get_db)):
+    suggestions = await suggest_agents_for_task(db, task_id)
+    return [
+        AgentSuggestionResponse(
+            agent_type_id=s.agent_type_id,
+            agent_type_name=s.agent_type_name,
+            confidence=s.confidence,
+            reason=s.reason,
+        )
+        for s in suggestions
+    ]
+
+
+@router.get(
+    "/instances/{instance_id}/steps",
+    response_model=list[ExecutionStepResponse],
+)
+async def list_execution_steps(
+    instance_id: str, db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(ExecutionStep)
+        .where(ExecutionStep.agent_instance_id == instance_id)
+        .order_by(ExecutionStep.step_number)
+    )
+    return [ExecutionStepResponse.model_validate(s) for s in result.scalars().all()]
+
+
+@router.get(
+    "/instances/{instance_id}/children",
+    response_model=list[AgentInstanceResponse],
+)
+async def list_child_instances(
+    instance_id: str, db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(AgentInstance)
+        .where(AgentInstance.parent_instance_id == instance_id)
+        .order_by(AgentInstance.started_at)
+    )
+    return [AgentInstanceResponse.model_validate(i) for i in result.scalars().all()]

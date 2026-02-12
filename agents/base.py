@@ -1,11 +1,13 @@
 """Base agent class for all CrewBoard agents."""
 
 import asyncio
+import json
+import time
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, UTC
 from uuid import uuid4
 
-from anthropic import AsyncAnthropic
+from anthropic import AsyncAnthropic, RateLimitError, APIStatusError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -15,6 +17,7 @@ from app.models.approval import Approval
 from app.models.execution import ExecutionStep
 from app.models.output import TaskOutput
 from app.models.task import Task
+from app.services.notification_service import notify_approval_needed, notify_agent_completed
 from app.sse.manager import SSEEvent, SSEManager
 
 
@@ -37,6 +40,14 @@ class BaseAgent(ABC):
         self.messages: list[str] = []  # Human messages queue
         self._step_number = 0
         self._total_cost_cents = 0
+        # Config from AgentType via briefing
+        self.model = briefing.model
+        self.temperature = briefing.temperature
+        self.max_tokens = briefing.max_tokens
+        self.system_prompt = briefing.system_prompt
+        # Thought log persistence
+        self._thought_entries: list[dict] = []
+        self._thought_flush_count = 0
 
     async def emit(self, event_type: str, data: dict):
         await self.sse.emit(self.instance_id, SSEEvent(event=event_type, data=data))
@@ -53,23 +64,50 @@ class BaseAgent(ABC):
             result = await self.run()
             await self._save_output(result)
 
+            # Flush remaining thoughts
+            await self._flush_thoughts()
+
             # Create approval if needed
             if self.briefing.autonomy_level == "needs_approval":
                 await self._request_approval()
                 await self._update_status("waiting_input")
+                await self._update_task_status("review")
+                # Notify about pending approval
+                async with self.session_factory() as session:
+                    await notify_approval_needed(
+                        session, self.briefing.task_title, self.briefing.task_id
+                    )
+                    await session.commit()
             else:
                 await self._update_status("completed")
+                await self._update_task_status("done")
+                # Notify about completion
+                async with self.session_factory() as session:
+                    await notify_agent_completed(
+                        session, self.briefing.task_title, self.briefing.agent_name
+                    )
+                    await session.commit()
 
             await self.emit("completed", {
                 "total_cost_cents": self._total_cost_cents,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             })
         except asyncio.CancelledError:
+            await self._flush_thoughts()
             await self._update_status("cancelled")
+            await self._update_task_status("todo")
             await self.emit("cancelled", {})
         except Exception as e:
-            await self.emit("error", {"message": str(e)})
+            # Flush thoughts so user can see where it crashed
+            await self._flush_thoughts()
+            error_msg = str(e)[:500]
+            await self.emit("error", {
+                "message": error_msg,
+                "step": self._step_number,
+                "total_cost_cents": self._total_cost_cents,
+            })
             await self._update_status("failed")
+            await self._update_task_status("todo")
 
     async def _update_status(self, status: str):
         async with self.session_factory() as session:
@@ -80,8 +118,19 @@ class BaseAgent(ABC):
             if instance:
                 instance.status = status
                 if status in ("completed", "failed", "cancelled"):
-                    instance.completed_at = datetime.utcnow()
+                    instance.completed_at = datetime.now(UTC)
                 instance.total_cost_cents = self._total_cost_cents
+                await session.commit()
+
+    async def _update_task_status(self, status: str):
+        """Update the associated task's status."""
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(Task).where(Task.id == self.briefing.task_id)
+            )
+            task = result.scalar_one_or_none()
+            if task:
+                task.status = status
                 await session.commit()
 
     async def _update_progress(self, percent: int, step: str, total_steps: int):
@@ -96,7 +145,7 @@ class BaseAgent(ABC):
                 instance.total_steps = total_steps
                 await session.commit()
 
-    async def _save_output(self, content: str):
+    async def _save_output(self, content: str, version: int = 1):
         async with self.session_factory() as session:
             output = TaskOutput(
                 id=str(uuid4()),
@@ -105,7 +154,7 @@ class BaseAgent(ABC):
                 created_by_id=self.instance_id,
                 content_type="markdown",
                 content=content,
-                version=1,
+                version=version,
             )
             session.add(output)
             await session.commit()
@@ -158,10 +207,87 @@ class BaseAgent(ABC):
                 tokens_out=tokens_out,
                 cost_cents=cost_cents,
                 duration_ms=duration_ms,
-                started_at=datetime.utcnow(),
+                started_at=datetime.now(UTC),
             )
             session.add(step)
             await session.commit()
+
+    # --- Thought Log Persistence ---
+
+    async def _append_thought(self, text: str):
+        """Record a thought and periodically flush to DB."""
+        self._thought_entries.append({
+            "text": text[:500],
+            "timestamp": datetime.now(UTC).isoformat(),
+        })
+        self._thought_flush_count += 1
+        if self._thought_flush_count >= 5:
+            await self._flush_thoughts()
+            self._thought_flush_count = 0
+
+    async def _flush_thoughts(self):
+        """Persist accumulated thoughts to AgentInstance.thought_log."""
+        if not self._thought_entries:
+            return
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(AgentInstance).where(AgentInstance.id == self.instance_id)
+            )
+            instance = result.scalar_one_or_none()
+            if instance:
+                # Merge with existing thoughts
+                existing = []
+                if instance.thought_log:
+                    try:
+                        existing = json.loads(instance.thought_log)
+                    except (json.JSONDecodeError, TypeError):
+                        existing = []
+                existing.extend(self._thought_entries)
+                # Keep last 100 thoughts max
+                instance.thought_log = json.dumps(existing[-100:])
+                await session.commit()
+        self._thought_entries = []
+
+    # --- Retry Logic ---
+
+    async def _call_with_retry(self, coro_factory, max_retries: int = 3):
+        """Call an async function with exponential backoff on rate limits."""
+        for attempt in range(max_retries + 1):
+            try:
+                return await coro_factory()
+            except RateLimitError as e:
+                if attempt == max_retries:
+                    raise
+                wait = 2 ** attempt * 2  # 2s, 4s, 8s
+                await self.emit("retry", {
+                    "attempt": attempt + 1,
+                    "max_retries": max_retries,
+                    "wait_seconds": wait,
+                    "reason": "rate_limit",
+                })
+                await asyncio.sleep(wait)
+            except APIStatusError as e:
+                if e.status_code == 529 and attempt < max_retries:
+                    wait = 2 ** attempt * 3  # 3s, 6s, 12s
+                    await self.emit("retry", {
+                        "attempt": attempt + 1,
+                        "max_retries": max_retries,
+                        "wait_seconds": wait,
+                        "reason": "overloaded",
+                    })
+                    await asyncio.sleep(wait)
+                else:
+                    raise
+
+    # --- Message Handling ---
+
+    def _check_messages(self) -> list[str]:
+        """Drain and return all pending human messages."""
+        msgs = list(self.messages)
+        self.messages.clear()
+        return msgs
+
+    # --- Control ---
 
     async def _check_pause_cancel(self):
         """Check if the agent should pause or was cancelled."""
@@ -181,3 +307,235 @@ class BaseAgent(ABC):
 
     def add_message(self, message: str):
         self.messages.append(message)
+
+    # --- Tool-Enabled Claude Call ---
+
+    async def _call_claude_with_tools(
+        self,
+        user_message: str,
+        tools: list,
+        system: str | None = None,
+        conversation_history: list[dict] | None = None,
+    ) -> str:
+        """Call Claude with tool use support. Runs the agentic tool-use loop.
+
+        Args:
+            user_message: The user message to send
+            tools: List of BaseTool instances
+            system: System prompt (uses self.system_prompt if not provided)
+            conversation_history: Optional prior messages for multi-turn
+
+        Returns:
+            The final text response from Claude
+        """
+        from agents.tools.base import BaseTool, ToolContext
+
+        tool_context = ToolContext(
+            session_factory=self.session_factory,
+            briefing=self.briefing,
+            instance_id=self.instance_id,
+            sse_manager=self.sse,
+        )
+
+        # Build tool definitions
+        tool_defs = [t.to_anthropic_format() for t in tools]
+        tool_map = {t.name: t for t in tools}
+
+        # Build messages
+        messages = list(conversation_history or [])
+        messages.append({"role": "user", "content": user_message})
+
+        sys_prompt = system or self.system_prompt or ""
+        start_time = time.time()
+        total_tokens_in = 0
+        total_tokens_out = 0
+
+        # Agentic loop: keep calling until we get a text-only response
+        max_iterations = 10
+        for iteration in range(max_iterations):
+            await self._check_pause_cancel()
+
+            response = await self._call_with_retry(
+                lambda: self.client.messages.create(
+                    model=self.model,
+                    max_tokens=self.max_tokens,
+                    system=sys_prompt,
+                    messages=messages,
+                    tools=tool_defs,
+                )
+            )
+
+            total_tokens_in += response.usage.input_tokens
+            total_tokens_out += response.usage.output_tokens
+
+            # Check if response contains tool use
+            tool_uses = [b for b in response.content if b.type == "tool_use"]
+            text_blocks = [b for b in response.content if b.type == "text"]
+
+            if not tool_uses:
+                # No tool calls — return the text
+                final_text = "\n".join(b.text for b in text_blocks)
+                duration_ms = int((time.time() - start_time) * 1000)
+
+                # Record as execution step
+                cost = self._estimate_cost(total_tokens_in, total_tokens_out)
+                await self._record_execution_step(
+                    step_type="llm_call",
+                    description=f"Claude + {len(tools)} Tools ({total_tokens_in}in/{total_tokens_out}out)",
+                    model=self.model,
+                    tokens_in=total_tokens_in,
+                    tokens_out=total_tokens_out,
+                    cost_cents=cost,
+                    duration_ms=duration_ms,
+                )
+                return final_text
+
+            # Process tool calls
+            # Add assistant message with all content blocks
+            messages.append({"role": "assistant", "content": response.content})
+
+            tool_results = []
+            for tool_use in tool_uses:
+                tool = tool_map.get(tool_use.name)
+                if not tool:
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": tool_use.id,
+                        "content": f"Fehler: Tool '{tool_use.name}' nicht gefunden.",
+                        "is_error": True,
+                    })
+                    continue
+
+                # Emit SSE event for tool call
+                await self.emit("tool_call", {
+                    "tool_name": tool_use.name,
+                    "parameters": tool_use.input,
+                    "iteration": iteration + 1,
+                })
+
+                # Execute tool
+                tool_start = time.time()
+                try:
+                    result = await tool.execute(tool_use.input, tool_context)
+                except Exception as e:
+                    result = f"Fehler bei Tool-Ausfuehrung: {str(e)}"
+
+                tool_duration = int((time.time() - tool_start) * 1000)
+
+                # Record tool call as execution step
+                await self._record_execution_step(
+                    step_type="tool_call",
+                    description=f"Tool: {tool_use.name}",
+                    model="",
+                    tokens_in=0,
+                    tokens_out=0,
+                    cost_cents=0,
+                    duration_ms=tool_duration,
+                )
+
+                tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": tool_use.id,
+                    "content": result[:10000],  # Limit tool result size
+                })
+
+                # Emit thought about tool result
+                summary = result[:200] if len(result) > 200 else result
+                await self._append_thought(f"[Tool: {tool_use.name}] {summary}")
+                await self.emit("thought", {
+                    "text": f"[{tool_use.name}] {summary}",
+                    "timestamp": datetime.now(UTC).isoformat(),
+                })
+
+            # Add tool results as user message
+            messages.append({"role": "user", "content": tool_results})
+
+        # If we hit max iterations, return whatever text we have
+        return "Maximale Tool-Iterationen erreicht."
+
+    # --- Multi-Turn Revision ---
+
+    async def revise(self, feedback: str) -> str:
+        """Revise the previous output based on feedback.
+
+        Loads previous output from DB, asks Claude to revise,
+        saves new version, and re-enters approval flow if needed.
+        """
+        await self._update_status("running")
+        await self.emit("revision_start", {
+            "feedback": feedback[:200],
+            "timestamp": datetime.now(UTC).isoformat(),
+        })
+
+        # Load previous output
+        previous_output = ""
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(TaskOutput)
+                .where(TaskOutput.task_id == self.briefing.task_id)
+                .order_by(TaskOutput.version.desc())
+            )
+            output = result.scalar_one_or_none()
+            if output:
+                previous_output = output.content
+                next_version = output.version + 1
+            else:
+                next_version = 1
+
+        # Build revision prompt
+        revision_prompt = (
+            f"Du hast folgenden Bericht erstellt:\n\n{previous_output[:3000]}\n\n"
+            f"Der Reviewer hat folgendes Feedback gegeben:\n{feedback}\n\n"
+            f"Bitte ueberarbeite den Bericht basierend auf dem Feedback. "
+            f"Behalte die Struktur bei und verbessere die genannten Punkte."
+        )
+
+        sys_prompt = self.system_prompt or ""
+        start_time = time.time()
+
+        response = await self._call_with_retry(
+            lambda: self.client.messages.create(
+                model=self.model,
+                max_tokens=self.max_tokens,
+                system=sys_prompt,
+                messages=[{"role": "user", "content": revision_prompt}],
+            )
+        )
+
+        duration_ms = int((time.time() - start_time) * 1000)
+        revised = "\n".join(b.text for b in response.content if b.type == "text")
+
+        tokens_in = response.usage.input_tokens
+        tokens_out = response.usage.output_tokens
+        cost = self._estimate_cost(tokens_in, tokens_out)
+
+        await self._record_execution_step(
+            step_type="revision",
+            description=f"Revision nach Feedback ({tokens_in}in/{tokens_out}out)",
+            model=self.model,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+            cost_cents=cost,
+            duration_ms=duration_ms,
+        )
+
+        # Save revised output
+        await self._save_output(revised, version=next_version)
+
+        # Re-enter approval flow if needed
+        if self.briefing.autonomy_level == "needs_approval":
+            await self._request_approval()
+            await self._update_status("waiting_input")
+        else:
+            await self._update_status("completed")
+
+        return revised
+
+    @staticmethod
+    def _estimate_cost(tokens_in: int, tokens_out: int) -> int:
+        """Estimate cost in cents based on Claude Sonnet pricing."""
+        # $3/1M input, $15/1M output
+        return int(
+            (tokens_in / 1_000_000 * 300)
+            + (tokens_out / 1_000_000 * 1500)
+        )

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import DateTime, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models import Base
@@ -15,6 +15,11 @@ class Project(Base):
     description: Mapped[Optional[str]] = mapped_column(Text)
     goal: Mapped[Optional[str]] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(20), default="active")
+    phase: Mapped[Optional[str]] = mapped_column(String(50))
+    start_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    end_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    budget_cents: Mapped[int] = mapped_column(Integer, default=0)
+    team_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("teams.id"), nullable=True)
     is_incognito: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

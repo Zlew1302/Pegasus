@@ -53,15 +53,22 @@ async def start_agent(instance_id: str):
         )
         project = project_result.scalar_one_or_none()
 
-        # Build briefing
+        # Build briefing with agent config
         briefing = TaskBriefing(
             task_id=task.id,
             task_title=task.title,
             task_description=task.description or "",
             acceptance_criteria=task.acceptance_criteria,
+            project_id=task.project_id,
             project_title=project.title if project else "",
             project_goal=project.goal or "" if project else "",
             autonomy_level=task.autonomy_level,
+            agent_name=agent_type.name,
+            model=agent_type.model or "claude-sonnet-4-20250514",
+            temperature=agent_type.temperature or 0.3,
+            max_tokens=agent_type.max_tokens or 4096,
+            system_prompt=agent_type.system_prompt,
+            tools_json=agent_type.tools,
         )
 
     # Get agent class
@@ -91,3 +98,72 @@ def get_running_agent(instance_id: str):
 def launch_agent_task(instance_id: str):
     """Fire-and-forget launch of an agent."""
     asyncio.create_task(start_agent(instance_id))
+
+
+async def _revise_agent(instance_id: str, feedback: str):
+    """Resume an agent with feedback for revision."""
+    async with async_session() as session:
+        inst_result = await session.execute(
+            select(AgentInstance).where(AgentInstance.id == instance_id)
+        )
+        instance = inst_result.scalar_one_or_none()
+        if not instance:
+            return
+
+        at_result = await session.execute(
+            select(AgentType).where(AgentType.id == instance.agent_type_id)
+        )
+        agent_type = at_result.scalar_one_or_none()
+        if not agent_type:
+            return
+
+        task_result = await session.execute(
+            select(Task).where(Task.id == instance.task_id)
+        )
+        task = task_result.scalar_one_or_none()
+        if not task:
+            return
+
+        project_result = await session.execute(
+            select(Project).where(Project.id == task.project_id)
+        )
+        project = project_result.scalar_one_or_none()
+
+        briefing = TaskBriefing(
+            task_id=task.id,
+            task_title=task.title,
+            task_description=task.description or "",
+            acceptance_criteria=task.acceptance_criteria,
+            project_id=task.project_id,
+            project_title=project.title if project else "",
+            project_goal=project.goal or "" if project else "",
+            autonomy_level=task.autonomy_level,
+            agent_name=agent_type.name,
+            model=agent_type.model or "claude-sonnet-4-20250514",
+            temperature=agent_type.temperature or 0.3,
+            max_tokens=agent_type.max_tokens or 4096,
+            system_prompt=agent_type.system_prompt,
+            tools_json=agent_type.tools,
+        )
+
+    agent_class = get_agent_class(agent_type.id)
+    if not agent_class:
+        return
+
+    agent = agent_class(
+        instance_id=instance_id,
+        briefing=briefing,
+        session_factory=async_session,
+        sse_manager=sse_manager,
+    )
+
+    _running_agents[instance_id] = agent
+    try:
+        await agent.revise(feedback)
+    finally:
+        _running_agents.pop(instance_id, None)
+
+
+def resume_agent_with_feedback(instance_id: str, feedback: str):
+    """Fire-and-forget launch of agent revision."""
+    asyncio.create_task(_revise_agent(instance_id, feedback))
