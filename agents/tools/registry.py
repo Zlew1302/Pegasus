@@ -7,6 +7,8 @@ from agents.tools.web_search import WebSearchTool
 from agents.tools.project_context import ReadProjectContextTool
 from agents.tools.task_management import TaskManagementTool
 from agents.tools.agent_delegation import DelegateToAgentTool
+from agents.tools.knowledge_search import KnowledgeSearchTool
+from agents.tools.github_tool import GitHubTool
 
 # Global tool registry
 TOOL_REGISTRY: dict[str, BaseTool] = {}
@@ -35,3 +37,5 @@ register_tool(WebSearchTool())
 register_tool(ReadProjectContextTool())
 register_tool(TaskManagementTool())
 register_tool(DelegateToAgentTool())
+register_tool(KnowledgeSearchTool())
+register_tool(GitHubTool())

@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, LayoutGrid, Kanban, CalendarRange, Wallet, FileText, Trash2 } from "lucide-react";
+import { ArrowLeft, LayoutGrid, Kanban, CalendarRange, Wallet, Bot, Database, Trash2 } from "lucide-react";
 import useSWR from "swr";
 import { apiFetch, fetcher } from "@/lib/api";
 import type { Project } from "@/types";
@@ -11,14 +11,16 @@ import { ProjectOverviewTab } from "@/components/project/project-overview-tab";
 import { ProjectBoardTab } from "@/components/project/project-board-tab";
 import { ProjectTimelineTab } from "@/components/project/project-timeline-tab";
 import { ProjectBudgetTab } from "@/components/project/project-budget-tab";
-import { ProjectDocsTab } from "@/components/project/project-docs-tab";
+import { ProjectAgentsTab } from "@/components/project/project-agents-tab";
+import { KnowledgeManager } from "@/components/profile/knowledge-manager";
 
 const TABS = [
   { key: "overview", label: "Übersicht", icon: LayoutGrid },
   { key: "board", label: "Board", icon: Kanban },
-  { key: "docs", label: "Dokumente", icon: FileText },
+  { key: "agents", label: "Agenten", icon: Bot },
   { key: "timeline", label: "Timeline", icon: CalendarRange },
   { key: "budget", label: "Budget", icon: Wallet },
+  { key: "knowledge", label: "Wissen", icon: Database },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -110,9 +112,9 @@ export default function ProjectDetailPage() {
         {activeTab === "board" && (
           <ProjectBoardTab projectId={projectId} />
         )}
-        {activeTab === "docs" && (
+        {activeTab === "agents" && (
           <div className="h-full overflow-y-auto">
-            <ProjectDocsTab projectId={projectId} />
+            <ProjectAgentsTab projectId={projectId} />
           </div>
         )}
         {activeTab === "timeline" && (
@@ -126,6 +128,11 @@ export default function ProjectDetailPage() {
               projectId={projectId}
               budgetCents={project.budget_cents}
             />
+          </div>
+        )}
+        {activeTab === "knowledge" && (
+          <div className="h-full overflow-y-auto p-4">
+            <KnowledgeManager projectId={projectId} />
           </div>
         )}
       </div>

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models import Base
@@ -22,6 +22,9 @@ class Task(Base):
             "autonomy_level IN ('full_auto','needs_approval','human_only')",
             name="ck_task_autonomy",
         ),
+        Index("ix_tasks_project_id", "project_id"),
+        Index("ix_tasks_status", "status"),
+        Index("ix_tasks_project_status", "project_id", "status"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)

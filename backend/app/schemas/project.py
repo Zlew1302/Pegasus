@@ -32,6 +32,7 @@ class ProjectResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
+    owner_id: str
     title: str
     description: Optional[str]
     goal: Optional[str]

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, Numeric, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models import Base
@@ -29,6 +29,10 @@ class AgentType(Base):
 
 class AgentInstance(Base):
     __tablename__ = "agent_instances"
+    __table_args__ = (
+        Index("ix_agent_instances_task_id", "task_id"),
+        Index("ix_agent_instances_status", "status"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     agent_type_id: Mapped[str] = mapped_column(

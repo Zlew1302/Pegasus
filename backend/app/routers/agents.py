@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,6 +11,7 @@ from app.models.task import Task
 from app.models.execution import ExecutionStep
 from app.schemas.agent import (
     AgentInstanceResponse,
+    AgentInstanceWithTaskResponse,
     AgentMessageRequest,
     AgentSpawnRequest,
     AgentSuggestionResponse,
@@ -99,6 +100,43 @@ async def spawn_agent(data: AgentSpawnRequest, db: AsyncSession = Depends(get_db
     launch_agent_task(instance.id)
 
     return AgentInstanceResponse.model_validate(instance)
+
+
+@router.get("/instances", response_model=list[AgentInstanceWithTaskResponse])
+async def list_agent_instances(
+    project_id: str = Query("", description="Filter nach Projekt-ID"),
+    status: str = Query("", description="Filter nach Status"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Alle Agent-Instanzen auflisten, optional gefiltert nach Projekt und Status."""
+    stmt = (
+        select(
+            AgentInstance,
+            Task.title.label("task_title"),
+            AgentType.name.label("agent_type_name"),
+        )
+        .join(Task, AgentInstance.task_id == Task.id)
+        .outerjoin(AgentType, AgentInstance.agent_type_id == AgentType.id)
+    )
+
+    if project_id:
+        stmt = stmt.where(Task.project_id == project_id)
+    if status:
+        stmt = stmt.where(AgentInstance.status == status)
+
+    stmt = stmt.order_by(AgentInstance.started_at.desc()).limit(100)
+
+    result = await db.execute(stmt)
+    rows = result.all()
+
+    return [
+        AgentInstanceWithTaskResponse(
+            **AgentInstanceResponse.model_validate(row[0]).model_dump(),
+            task_title=row[1],
+            agent_type_name=row[2],
+        )
+        for row in rows
+    ]
 
 
 @router.get("/instances/{instance_id}", response_model=AgentInstanceResponse)

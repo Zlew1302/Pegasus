@@ -1,0 +1,20 @@
+# Frontend (not needed for backend build)
+frontend/node_modules
+frontend/.next
+
+# Python caches
+__pycache__
+*.pyc
+.venv
+.pytest_cache
+
+# Data files
+*.db
+backend/uploads/
+backend/crewboard.db
+
+# Environment
+.env
+
+# Git
+.git

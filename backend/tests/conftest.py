@@ -1,4 +1,5 @@
 import asyncio
+import os
 from collections.abc import AsyncGenerator
 
 import pytest
@@ -13,6 +14,9 @@ from app.models import Base
 
 # Set dummy API key so agent spawn tests pass the guard
 settings.ANTHROPIC_API_KEY = "test-key-not-real"
+
+# Disable rate limiting in tests
+os.environ["TESTING"] = "1"
 
 TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
 

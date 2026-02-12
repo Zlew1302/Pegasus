@@ -190,17 +190,16 @@ export function ProjectBoardTab({ projectId }: ProjectBoardTabProps) {
         />
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        <div className="flex-1 overflow-hidden">
-          <KanbanBoard
-            tasks={filteredTasks}
-            onTaskClick={handleTaskClick}
-            onStatusChange={handleStatusChange}
-            onCreateTask={handleCreateTask}
-            selectedTaskIds={selectedTaskIds}
-            onToggleSelect={handleToggleSelect}
-          />
-        </div>
+      <div className="flex-1 overflow-hidden">
+        <KanbanBoard
+          tasks={filteredTasks}
+          onTaskClick={handleTaskClick}
+          onStatusChange={handleStatusChange}
+          onCreateTask={handleCreateTask}
+          selectedTaskIds={selectedTaskIds}
+          onToggleSelect={handleToggleSelect}
+        />
+      </div>
 
       <SidePanel open={!!selectedTask} onClose={() => setSelectedTask(null)}>
         {selectedTask && (
@@ -227,7 +226,6 @@ export function ProjectBoardTab({ projectId }: ProjectBoardTabProps) {
         onSubmit={handleSubmitTask}
         defaultStatus={taskFormStatus}
       />
-      </div>
     </div>
   );
 }

@@ -16,8 +16,19 @@ export interface CreateProjectData {
   team_id?: string;
 }
 
+interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+  has_more: boolean;
+}
+
 export function useProjects() {
-  const { data, error, mutate } = useSWR<Project[]>("/projects", fetcher);
+  const { data, error, mutate } = useSWR<PaginatedResponse<Project>>(
+    "/projects",
+    fetcher
+  );
 
   const createProject = async (project: CreateProjectData) => {
     const created = await apiFetch<Project>("/projects", {
@@ -34,7 +45,8 @@ export function useProjects() {
   };
 
   return {
-    projects: data ?? [],
+    projects: data?.items ?? [],
+    total: data?.total ?? 0,
     isLoading: !data && !error,
     error,
     createProject,

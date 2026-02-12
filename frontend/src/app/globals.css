@@ -133,6 +133,47 @@ body {
   cursor: grabbing;
 }
 
+/* ── Spotlight ─────────────────────────── */
+
+.spotlight-backdrop {
+  animation: spotlight-fade-in 150ms ease-out;
+}
+
+.spotlight-panel {
+  animation: spotlight-slide-in 200ms ease-out;
+}
+
+.spotlight-history-panel {
+  animation: spotlight-history-in 200ms ease-out;
+}
+
+@keyframes spotlight-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes spotlight-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes spotlight-history-in {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 /* Agent Output Markdown (prose-invert) */
 .prose.prose-invert {
   --tw-prose-body: hsl(var(--foreground));

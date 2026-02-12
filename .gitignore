@@ -41,3 +41,9 @@ htmlcov/
 
 # Build
 *.tsbuildinfo
+
+# Uploads
+uploads/
+
+# Docker
+docker-compose.override.yml

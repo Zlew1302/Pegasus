@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { TopNav } from "@/components/layout/top-nav";
+import { SpotlightProvider } from "@/components/spotlight/spotlight-provider";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -24,6 +25,7 @@ export default function RootLayout({
         <div className="flex h-screen flex-col">
           <TopNav />
           <main className="flex-1 overflow-hidden">{children}</main>
+          <SpotlightProvider />
         </div>
       </body>
     </html>

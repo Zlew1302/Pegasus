@@ -23,6 +23,7 @@ import {
   cancelAgent,
 } from "@/hooks/use-agents";
 import { ExecutionSteps } from "./execution-steps";
+import { InstanceTrackView } from "../tracks/instance-track-view";
 import { AgentMessageInput } from "./agent-message-input";
 
 interface AgentLiveViewProps {
@@ -34,8 +35,9 @@ export function AgentLiveView({
   instanceId,
   onStatusChange,
 }: AgentLiveViewProps) {
-  const { instance } = useAgentInstance(instanceId);
   const sse = useSSE(instanceId, onStatusChange);
+  const sseActive = sse.status === "running" || sse.status === "connecting";
+  const { instance } = useAgentInstance(instanceId, { pollDisabled: sseActive });
   const thoughtsEndRef = useRef<HTMLDivElement>(null);
   const [showOutput, setShowOutput] = useState(false);
 
@@ -266,6 +268,7 @@ export function AgentLiveView({
       {isTerminal && (
         <div className="border-t border-border px-3 py-2">
           <ExecutionSteps instanceId={instanceId} />
+          <InstanceTrackView instanceId={instanceId} />
         </div>
       )}
     </div>

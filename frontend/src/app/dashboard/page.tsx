@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Bot, CheckCircle2, Wallet } from "lucide-react";
 import { useDashboardStats, useActivity, useCosts, useProductivity } from "@/hooks/use-dashboard";
 import { useDashboardLayout } from "@/components/dashboard/use-dashboard-layout";
@@ -19,6 +19,7 @@ import { RecentDocumentsWidget } from "@/components/dashboard/recent-documents-w
 import { NotificationsWidget } from "@/components/dashboard/notifications-widget";
 import { ApprovalQueueWidget } from "@/components/dashboard/approval-queue-widget";
 import { QuickActionsWidget } from "@/components/dashboard/quick-actions-widget";
+import { DecisionTracksWidget } from "@/components/dashboard/decision-tracks-widget";
 
 // Measure container width with ResizeObserver
 function useContainerWidth() {
@@ -29,7 +30,10 @@ function useContainerWidth() {
     const el = ref.current;
     if (!el) return;
 
-    const measure = () => setWidth(el.offsetWidth);
+    const measure = () => {
+      const w = el.offsetWidth;
+      setWidth((prev) => (Math.abs(prev - w) > 1 ? w : prev));
+    };
     measure();
 
     const ro = new ResizeObserver(measure);
@@ -62,11 +66,14 @@ function DashboardGrid() {
 
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  const costChartData = costs.map((c) => ({ date: c.date, value: c.cost_cents }));
-  const productivityChartData = productivity.map((p) => ({
-    date: p.date,
-    value: p.tasks_completed,
-  }));
+  const costChartData = useMemo(
+    () => costs.map((c) => ({ date: c.date, value: c.cost_cents })),
+    [costs]
+  );
+  const productivityChartData = useMemo(
+    () => productivity.map((p) => ({ date: p.date, value: p.tasks_completed })),
+    [productivity]
+  );
 
   // Filter layout to only include visible widgets
   const activeLayout = layout.filter((l) => visibleWidgets.includes(l.i));
@@ -199,6 +206,12 @@ function DashboardGrid() {
         return (
           <WidgetWrapper id={id} title="Schnellaktionen" onRemove={removeWidget}>
             <QuickActionsWidget />
+          </WidgetWrapper>
+        );
+      case "decision-tracks":
+        return (
+          <WidgetWrapper id={id} title="Organisations-Map" onRemove={removeWidget}>
+            <DecisionTracksWidget embedded />
           </WidgetWrapper>
         );
       default:

@@ -19,3 +19,5 @@ from app.models.budget import ProjectBudget, ApiKey  # noqa: E402, F401
 from app.models.comment import Comment  # noqa: E402, F401
 from app.models.saved_view import SavedView  # noqa: E402, F401
 from app.models.document import Document, Block  # noqa: E402, F401
+from app.models.knowledge import KnowledgeDocument, KnowledgeChunk  # noqa: E402, F401
+from app.models.tracks import TrackPoint, EntityNode, EntityRelationship, WorkflowPattern  # noqa: E402, F401

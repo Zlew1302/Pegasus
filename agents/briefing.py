@@ -13,6 +13,7 @@ class TaskBriefing:
     project_goal: str = ""
     autonomy_level: str = "needs_approval"
     additional_context: str = ""
+    user_id: str = "default-user"
     # Agent config from AgentType record
     agent_name: str = ""
     model: str = "claude-sonnet-4-20250514"

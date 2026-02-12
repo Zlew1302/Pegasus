@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { Bot, Plus, LayoutDashboard, Briefcase, FolderKanban, User } from "lucide-react";
+import { Bot, Plus, Search, LayoutDashboard, Briefcase, FolderKanban, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NotificationBell } from "./notification-bell";
 
@@ -54,6 +54,23 @@ export function TopNav() {
 
       {/* Right: Actions */}
       <div className="flex items-center gap-2">
+        {/* Spotlight Trigger */}
+        <button
+          onClick={() => {
+            // Dispatch Cmd+K to open Spotlight
+            document.dispatchEvent(
+              new KeyboardEvent("keydown", { key: "k", metaKey: true })
+            );
+          }}
+          className="flex items-center gap-2 rounded-md border border-border bg-secondary/40 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+        >
+          <Search className="h-3 w-3" />
+          <span>Suchen...</span>
+          <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium">
+            ⌘K
+          </kbd>
+        </button>
+
         <Button
           onClick={() => router.push("/projects?new=true")}
           size="sm"

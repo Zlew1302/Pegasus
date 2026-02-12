@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { User, MessageSquare, FileText } from "lucide-react";
+import { User, MessageSquare } from "lucide-react";
 import { useProfile } from "@/hooks/use-profile";
 import { ApiKeyManager } from "@/components/profile/api-key-manager";
 import { AuditTrail } from "@/components/profile/audit-trail";
 import { TokenUsageChart } from "@/components/profile/token-usage-chart";
+import { KnowledgeManager } from "@/components/profile/knowledge-manager";
 import { Button } from "@/components/ui/button";
 
 export default function ProfilePage() {
@@ -95,16 +96,8 @@ export default function ProfilePage() {
         {/* API Keys */}
         <ApiKeyManager />
 
-        {/* Sources Placeholder */}
-        <div className="rounded-lg border border-border bg-card p-4">
-          <div className="mb-3 flex items-center gap-2">
-            <FileText className="h-4 w-4 text-muted-foreground" />
-            <h3 className="text-sm font-medium">Quellen & Dateien</h3>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Lokale Dateiquellen für Agenten — kommt in einer zukünftigen Version.
-          </p>
-        </div>
+        {/* Knowledge Base */}
+        <KnowledgeManager />
 
         {/* Token Usage */}
         <TokenUsageChart />

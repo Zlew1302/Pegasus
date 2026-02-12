@@ -40,6 +40,11 @@ class AgentInstanceResponse(BaseModel):
     total_cost_cents: int
 
 
+class AgentInstanceWithTaskResponse(AgentInstanceResponse):
+    task_title: str | None = None
+    agent_type_name: str | None = None
+
+
 class AgentMessageRequest(BaseModel):
     message: str
 

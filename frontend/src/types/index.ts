@@ -95,6 +95,11 @@ export interface AgentInstance {
   total_cost_cents: number;
 }
 
+export interface AgentInstanceWithTask extends AgentInstance {
+  task_title: string | null;
+  agent_type_name: string | null;
+}
+
 export interface ExecutionStep {
   id: string;
   agent_instance_id: string;
@@ -421,4 +426,147 @@ export const TAG_CONFIG: Record<string, { label: string; color: string; bg: stri
   DESIGN: { label: "Design", color: "text-purple-400", bg: "bg-purple-500/10" },
   DATA: { label: "Daten", color: "text-cyan-400", bg: "bg-cyan-500/10" },
   CONTENT: { label: "Content", color: "text-amber-400", bg: "bg-amber-500/10" },
+};
+
+// ── Knowledge Base ─────────────────────────────────────────
+
+export type KnowledgeDocumentStatus = "processing" | "ready" | "error";
+
+export interface KnowledgeDocument {
+  id: string;
+  filename: string;
+  file_type: string;
+  title: string;
+  description: string | null;
+  status: KnowledgeDocumentStatus;
+  error_message: string | null;
+  total_chunks: number;
+  character_count: number;
+  word_count: number;
+  file_size_bytes: number;
+  project_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface KnowledgeSearchResult {
+  chunk_content: string;
+  document_title: string;
+  document_id: string;
+  score: number;
+  chunk_index: number;
+}
+
+export interface KnowledgeStats {
+  total_documents: number;
+  total_chunks: number;
+  total_words: number;
+  by_type: Record<string, number>;
+  by_status: Record<string, number>;
+}
+
+// ── Spotlight ────────────────────────────────────────────────
+
+export interface SpotlightContext {
+  current_path: string;
+  current_page_type: string;
+  current_entity_id?: string;
+  current_entity_title?: string;
+}
+
+export interface SpotlightAction {
+  type: "navigate" | "created" | "updated" | "spawned";
+  label: string;
+  path?: string;
+  entityId?: string;
+}
+
+export interface SpotlightToolCall {
+  name: string;
+  status: "running" | "done";
+}
+
+export interface SpotlightMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  toolCalls?: SpotlightToolCall[];
+  actions?: SpotlightAction[];
+  timestamp: Date;
+}
+
+// ── Decision Tracks ────────────────────────────────────────────
+
+export interface TrackPointEntry {
+  id: string;
+  system_type: string;
+  action_type: string;
+  tool_name: string;
+  entities: { type: string; name: string; source?: string }[];
+  input_summary: string | null;
+  output_summary: string | null;
+  signal_score: number | null;
+  sequence_index: number;
+  duration_ms: number | null;
+  created_at: string | null;
+}
+
+export interface EntityNodeEntry {
+  id: string;
+  type: string;
+  name: string;
+  occurrences: number;
+  last_seen?: string | null;
+}
+
+export interface EntityRelationshipEntry {
+  source: { name: string; type: string };
+  target: { name: string; type: string };
+  type: string;
+  weight: number;
+  observations: number;
+}
+
+export interface OrgInsights {
+  summary: {
+    total_entities: number;
+    total_relationships: number;
+    total_track_points: number;
+  };
+  top_entities: EntityNodeEntry[];
+  top_relationships: EntityRelationshipEntry[];
+}
+
+export interface EntityGraphData {
+  nodes: { id: string; type: string; name: string; occurrences: number }[];
+  edges: { source: string; target: string; type: string; weight: number }[];
+}
+
+export interface WorkflowPatternEntry {
+  id: string;
+  label: string;
+  sequence: { system: string; action: string }[];
+  frequency: number;
+  confidence: number;
+  avg_signal: number;
+  last_observed: string | null;
+}
+
+export interface InstanceTracks {
+  instance_id: string;
+  track_points: TrackPointEntry[];
+  total_points: number;
+}
+
+export const ENTITY_TYPE_COLORS: Record<
+  string,
+  { color: string; bg: string }
+> = {
+  Person: { color: "text-cyan-400", bg: "bg-cyan-500/10" },
+  Organization: { color: "text-blue-400", bg: "bg-blue-500/10" },
+  SoftwareApplication: { color: "text-amber-400", bg: "bg-amber-500/10" },
+  SoftwareSourceCode: { color: "text-green-400", bg: "bg-green-500/10" },
+  DigitalDocument: { color: "text-purple-400", bg: "bg-purple-500/10" },
+  CommunicationChannel: { color: "text-pink-400", bg: "bg-pink-500/10" },
+  Project: { color: "text-indigo-400", bg: "bg-indigo-500/10" },
 };

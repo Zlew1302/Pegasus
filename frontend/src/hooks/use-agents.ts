@@ -2,7 +2,7 @@
 
 import useSWR from "swr";
 import { apiFetch, fetcher } from "@/lib/api";
-import type { AgentInstance, AgentSuggestion, AgentType, ExecutionStep } from "@/types";
+import type { AgentInstance, AgentInstanceWithTask, AgentSuggestion, AgentType, ExecutionStep } from "@/types";
 
 export function useAgentTypes() {
   const { data, error } = useSWR<AgentType[]>("/agents/types", fetcher);
@@ -12,11 +12,18 @@ export function useAgentTypes() {
   };
 }
 
-export function useAgentInstance(instanceId: string | null) {
+export function useAgentInstance(
+  instanceId: string | null,
+  options?: { pollDisabled?: boolean },
+) {
   const { data, error, mutate } = useSWR<AgentInstance>(
     instanceId ? `/agents/instances/${instanceId}` : null,
     fetcher,
-    { refreshInterval: 2000 }
+    {
+      refreshInterval: options?.pollDisabled ? 0 : 5000,
+      revalidateOnFocus: false,
+      isPaused: () => typeof document !== "undefined" && document.hidden,
+    }
   );
 
   return {
@@ -73,6 +80,23 @@ export function useAgentSuggestions(taskId: string | null) {
   return {
     suggestions: data ?? [],
     isLoading: !data && !error,
+  };
+}
+
+export function useProjectAgentInstances(projectId: string | null) {
+  const { data, error, mutate } = useSWR<AgentInstanceWithTask[]>(
+    projectId ? `/agents/instances?project_id=${projectId}` : null,
+    fetcher,
+    {
+      refreshInterval: 10000,
+      revalidateOnFocus: false,
+      isPaused: () => typeof document !== "undefined" && document.hidden,
+    }
+  );
+  return {
+    instances: data ?? [],
+    isLoading: !data && !error,
+    mutate,
   };
 }
 

@@ -163,6 +163,15 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     defaultLayout: { w: 4, h: 3, minW: 3, minH: 2, maxW: 8, maxH: 6 },
     defaultVisible: false,
   },
+  {
+    id: "decision-tracks",
+    name: "Organisations-Map",
+    description: "Gelernte Organisationsstruktur und Arbeitsabläufe",
+    icon: "Network",
+    category: "info",
+    defaultLayout: { w: 6, h: 4, minW: 4, minH: 3, maxW: 12, maxH: 8 },
+    defaultVisible: false,
+  },
 ];
 
 export const WIDGET_MAP = Object.fromEntries(

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import {
   AreaChart,
   Area,
@@ -30,7 +30,7 @@ const RANGES = [
   { key: "quarter", label: "90T" },
 ] as const;
 
-export function ChartWidget({
+export const ChartWidget = memo(function ChartWidget({
   title,
   data,
   color = "hsl(199 89% 48%)",
@@ -94,6 +94,34 @@ export function ChartWidget({
       </div>
     </div>
   );
+
+  if (filtered.length === 0) {
+    const emptyState = (
+      <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
+        <BarChart3 className="mb-2 h-8 w-8 opacity-30" />
+        <p className="text-xs">Keine Daten für diesen Zeitraum</p>
+      </div>
+    );
+
+    if (embedded) {
+      return (
+        <div className="flex h-full flex-col">
+          <div className="mb-2 flex justify-end">{controls}</div>
+          <div className="flex-1">{emptyState}</div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex h-full flex-col rounded-lg border border-border bg-card p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-sm font-medium">{title}</h3>
+          {controls}
+        </div>
+        <div className="flex-1">{emptyState}</div>
+      </div>
+    );
+  }
 
   const chart = (
     <ResponsiveContainer width="100%" height="100%">
@@ -220,4 +248,4 @@ export function ChartWidget({
       <div className="flex-1">{chart}</div>
     </div>
   );
-}
+});

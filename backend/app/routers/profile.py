@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth import get_current_user
 from app.database import get_db
 from app.models.agent import AgentInstance, AgentType
 from app.models.budget import ApiKey
@@ -25,18 +26,15 @@ from app.schemas.user import (
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])
 
-DEFAULT_PROFILE_ID = "default-user"
-
-
-async def _get_or_create_profile(db: AsyncSession) -> UserProfile:
+async def _get_or_create_profile(db: AsyncSession, user_id: str) -> UserProfile:
     """Get user profile, auto-create if not exists."""
     result = await db.execute(
-        select(UserProfile).where(UserProfile.id == DEFAULT_PROFILE_ID)
+        select(UserProfile).where(UserProfile.id == user_id)
     )
     profile = result.scalar_one_or_none()
     if not profile:
         profile = UserProfile(
-            id=DEFAULT_PROFILE_ID,
+            id=user_id,
             display_name="Benutzer",
         )
         db.add(profile)
@@ -46,16 +44,21 @@ async def _get_or_create_profile(db: AsyncSession) -> UserProfile:
 
 
 @router.get("", response_model=UserProfileResponse)
-async def get_profile(db: AsyncSession = Depends(get_db)):
-    profile = await _get_or_create_profile(db)
+async def get_profile(
+    user_id: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    profile = await _get_or_create_profile(db, user_id)
     return UserProfileResponse.model_validate(profile)
 
 
 @router.patch("", response_model=UserProfileResponse)
 async def update_profile(
-    data: UserProfileUpdate, db: AsyncSession = Depends(get_db)
+    data: UserProfileUpdate,
+    user_id: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
-    profile = await _get_or_create_profile(db)
+    profile = await _get_or_create_profile(db, user_id)
     for key, value in data.model_dump(exclude_unset=True).items():
         setattr(profile, key, value)
     await db.commit()

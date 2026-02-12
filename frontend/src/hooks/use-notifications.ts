@@ -2,11 +2,16 @@ import useSWR from "swr";
 import { apiFetch, fetcher } from "@/lib/api";
 import type { Notification } from "@/types";
 
+const SWR_STABLE = {
+  revalidateOnFocus: false,
+  isPaused: () => typeof document !== "undefined" && document.hidden,
+};
+
 export function useNotifications() {
   const { data, error, isLoading, mutate } = useSWR<Notification[]>(
     "/notifications",
     fetcher,
-    { refreshInterval: 10000 }
+    { refreshInterval: 30000, ...SWR_STABLE }
   );
 
   return {
@@ -21,7 +26,7 @@ export function useUnreadCount() {
   const { data, error, mutate } = useSWR<{ count: number }>(
     "/notifications/unread-count",
     fetcher,
-    { refreshInterval: 10000 }
+    { refreshInterval: 30000, ...SWR_STABLE }
   );
 
   return {

@@ -6,7 +6,10 @@ from httpx import AsyncClient
 async def test_list_projects_empty(client: AsyncClient):
     resp = await client.get("/api/projects")
     assert resp.status_code == 200
-    assert resp.json() == []
+    data = resp.json()
+    assert data["items"] == []
+    assert data["total"] == 0
+    assert data["has_more"] is False
 
 
 @pytest.mark.asyncio
@@ -72,7 +75,8 @@ async def test_list_projects_returns_task_count(client: AsyncClient):
     await client.post(f"/api/projects/{pid}/tasks", json={"title": "Task 1"})
     await client.post(f"/api/projects/{pid}/tasks", json={"title": "Task 2"})
     resp = await client.get("/api/projects")
-    projects = resp.json()
+    data = resp.json()
+    projects = data["items"]
     project = next(p for p in projects if p["id"] == pid)
     assert project["task_count"] == 2
 

@@ -45,9 +45,16 @@ class BaseAgent(ABC):
         self.temperature = briefing.temperature
         self.max_tokens = briefing.max_tokens
         self.system_prompt = briefing.system_prompt
+        # Inject knowledge context into system prompt (if available)
+        if briefing.additional_context:
+            self.system_prompt = (
+                (self.system_prompt or "") + "\n\n" + briefing.additional_context
+            )
         # Thought log persistence
         self._thought_entries: list[dict] = []
         self._thought_flush_count = 0
+        # Decision Tracks
+        self._track_sequence_index = 0
 
     async def emit(self, event_type: str, data: dict):
         await self.sse.emit(self.instance_id, SSEEvent(event=event_type, data=data))
@@ -92,6 +99,16 @@ class BaseAgent(ABC):
                 "total_cost_cents": self._total_cost_cents,
                 "timestamp": datetime.now(UTC).isoformat(),
             })
+
+            # Trigger background Decision Tracks pattern analysis
+            try:
+                from app.services.track_service import analyze_patterns
+                asyncio.create_task(
+                    analyze_patterns(self.session_factory, self.instance_id)
+                )
+            except Exception:
+                pass  # Pattern analysis is non-critical
+
         except asyncio.CancelledError:
             await self._flush_thoughts()
             await self._update_status("cancelled")
@@ -432,6 +449,24 @@ class BaseAgent(ABC):
                     cost_cents=0,
                     duration_ms=tool_duration,
                 )
+
+                # Record Decision Track point (non-critical, fire-and-forget)
+                try:
+                    from app.services.track_service import record_track_point
+                    self._track_sequence_index += 1
+                    await record_track_point(
+                        session_factory=self.session_factory,
+                        agent_instance_id=self.instance_id,
+                        task_id=self.briefing.task_id,
+                        project_id=self.briefing.project_id or None,
+                        tool_name=tool_use.name,
+                        parameters=tool_use.input,
+                        result=result,
+                        duration_ms=tool_duration,
+                        sequence_index=self._track_sequence_index,
+                    )
+                except Exception:
+                    pass  # Track recording must never block agent execution
 
                 tool_results.append({
                     "type": "tool_result",
