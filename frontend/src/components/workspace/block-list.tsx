@@ -34,6 +34,8 @@ interface BlockListProps {
   onMergeWithPrevious: (blockId: string) => void;
   onReorder: (activeId: string, overId: string) => void;
   onFocusBlock: (blockId: string, placement: "start" | "end" | "offset", offset?: number) => void;
+  /** Notifies parent which block is focused (for floating toolbar) */
+  onBlockFocus?: (blockId: string) => void;
 }
 
 export function BlockList({
@@ -49,6 +51,7 @@ export function BlockList({
   onMergeWithPrevious,
   onReorder,
   onFocusBlock,
+  onBlockFocus,
 }: BlockListProps) {
   const [slashMenu, setSlashMenu] = useState<{
     blockId: string;
@@ -158,9 +161,10 @@ export function BlockList({
       if (selectedBlockIds.size > 0) {
         setSelectedBlockIds(new Set());
       }
-      // Don't call onFocusBlock here — the contentEditable handles its own focus
+      // Notify parent which block is focused (for toolbar context)
+      onBlockFocus?.(blockId);
     },
-    [selectedBlockIds]
+    [selectedBlockIds, onBlockFocus]
   );
 
   // ── Delete selected blocks with Backspace/Delete ─────────────
@@ -192,6 +196,17 @@ export function BlockList({
       const isEmpty = fullText === "";
       const isContinuable = CONTINUABLE_TYPES.includes(block.block_type);
 
+      // ── Cmd+B/I/U: let browser handle natively (execCommand) ──
+      if ((e.metaKey || e.ctrlKey) && ["b", "i", "u"].includes(e.key.toLowerCase())) {
+        // Don't prevent default — let contentEditable handle the formatting
+        // After the formatting is applied, trigger content change to save
+        setTimeout(() => {
+          const content = block.block_type === "code" ? el.innerText : el.innerHTML;
+          onContentChange(block.id, content);
+        }, 0);
+        return;
+      }
+
       // ── Enter ────────────────────────────────────────────────
       if (e.key === "Enter" && !e.shiftKey) {
         if (block.block_type === "code") return;
@@ -221,7 +236,7 @@ export function BlockList({
           }
         }
 
-        // Update current block with head text
+        // Update current block with head text (use innerHTML for rich text)
         if (tailText || isEmpty) {
           onContentChange(block.id, headText);
           el.textContent = headText;

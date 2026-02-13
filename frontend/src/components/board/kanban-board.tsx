@@ -3,13 +3,14 @@
 import {
   DndContext,
   DragEndEvent,
+  DragOverEvent,
   DragOverlay,
   DragStartEvent,
   PointerSensor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { KanbanColumn } from "./kanban-column";
 import { TaskCard } from "./task-card";
 import type { Task, TaskStatus } from "@/types";
@@ -33,6 +34,7 @@ export function KanbanBoard({
   onToggleSelect,
 }: KanbanBoardProps) {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [activeOverColumn, setActiveOverColumn] = useState<string | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
@@ -69,8 +71,27 @@ export function KanbanBoard({
     setActiveTask(task ?? null);
   }
 
+  const handleDragOver = useCallback(
+    (event: DragOverEvent) => {
+      const { over } = event;
+      if (!over) {
+        setActiveOverColumn(null);
+        return;
+      }
+      const overId = over.id as string;
+      // Check if hovering over a column
+      if (COLUMNS.some((c) => c.id === overId)) {
+        setActiveOverColumn(overId);
+      } else {
+        setActiveOverColumn(null);
+      }
+    },
+    []
+  );
+
   function handleDragEnd(event: DragEndEvent) {
     setActiveTask(null);
+    setActiveOverColumn(null);
     const { active, over } = event;
     if (!over) return;
 
@@ -91,6 +112,7 @@ export function KanbanBoard({
     <DndContext
       sensors={sensors}
       onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
       <div className="flex h-full gap-3 overflow-x-auto p-4">
@@ -105,6 +127,10 @@ export function KanbanBoard({
             onCreateTask={() => onCreateTask(column.id)}
             selectedTaskIds={selectedTaskIds}
             onToggleSelect={onToggleSelect}
+            isDropTarget={
+              activeOverColumn === column.id &&
+              activeTask?.status !== column.id
+            }
           />
         ))}
       </div>

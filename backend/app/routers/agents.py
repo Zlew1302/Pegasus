@@ -15,7 +15,10 @@ from app.schemas.agent import (
     AgentMessageRequest,
     AgentSpawnRequest,
     AgentSuggestionResponse,
+    AgentTypeCreateRequest,
+    AgentTypeDetailResponse,
     AgentTypeResponse,
+    AgentTypeUpdateRequest,
     ExecutionStepResponse,
 )
 from app.config import settings
@@ -31,13 +34,86 @@ async def list_agent_types(db: AsyncSession = Depends(get_db)):
     return [AgentTypeResponse.model_validate(a) for a in result.scalars().all()]
 
 
-@router.get("/types/{type_id}", response_model=AgentTypeResponse)
+@router.get("/types/{type_id}", response_model=AgentTypeDetailResponse)
 async def get_agent_type(type_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(AgentType).where(AgentType.id == type_id))
     agent_type = result.scalar_one_or_none()
     if not agent_type:
         raise HTTPException(status_code=404, detail="Agent-Typ nicht gefunden")
-    return AgentTypeResponse.model_validate(agent_type)
+    return AgentTypeDetailResponse.model_validate(agent_type)
+
+
+@router.post("/types", response_model=AgentTypeDetailResponse, status_code=201)
+async def create_agent_type(
+    data: AgentTypeCreateRequest, db: AsyncSession = Depends(get_db)
+):
+    """Neuen benutzerdefinierten Agent-Typ erstellen."""
+    agent_type = AgentType(
+        id=f"agent-custom-{str(uuid4())[:8]}",
+        name=data.name,
+        description=data.description,
+        capabilities=data.capabilities,
+        tools=data.tools,
+        system_prompt=data.system_prompt,
+        model=data.model,
+        temperature=data.temperature,
+        max_tokens=data.max_tokens,
+        max_concurrent_instances=data.max_concurrent_instances,
+        trust_level=data.trust_level,
+        context_scope=data.context_scope,
+        is_custom=True,
+    )
+    db.add(agent_type)
+    await db.commit()
+    await db.refresh(agent_type)
+    return AgentTypeDetailResponse.model_validate(agent_type)
+
+
+@router.put("/types/{type_id}", response_model=AgentTypeDetailResponse)
+async def update_agent_type(
+    type_id: str,
+    data: AgentTypeUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Agent-Typ aktualisieren (nur benutzerdefinierte)."""
+    result = await db.execute(select(AgentType).where(AgentType.id == type_id))
+    agent_type = result.scalar_one_or_none()
+    if not agent_type:
+        raise HTTPException(status_code=404, detail="Agent-Typ nicht gefunden")
+
+    update_data = data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(agent_type, field, value)
+
+    await db.commit()
+    await db.refresh(agent_type)
+    return AgentTypeDetailResponse.model_validate(agent_type)
+
+
+@router.delete("/types/{type_id}", status_code=204)
+async def delete_agent_type(type_id: str, db: AsyncSession = Depends(get_db)):
+    """Benutzerdefinierten Agent-Typ loeschen."""
+    result = await db.execute(select(AgentType).where(AgentType.id == type_id))
+    agent_type = result.scalar_one_or_none()
+    if not agent_type:
+        raise HTTPException(status_code=404, detail="Agent-Typ nicht gefunden")
+    if not agent_type.is_custom:
+        raise HTTPException(status_code=403, detail="Eingebaute Agenten koennen nicht geloescht werden")
+    await db.delete(agent_type)
+    await db.commit()
+
+
+@router.get("/tools/available", response_model=list[dict])
+async def list_available_tools():
+    """Alle verfuegbaren Tools auflisten (fuer Agent-Konfigurator)."""
+    from agents.tools.registry import TOOL_REGISTRY
+    return [
+        {
+            "name": tool.name,
+            "description": tool.description,
+        }
+        for tool in TOOL_REGISTRY.values()
+    ]
 
 
 @router.post("/spawn", response_model=AgentInstanceResponse, status_code=201)

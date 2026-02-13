@@ -30,3 +30,24 @@ class CostEntry(BaseModel):
 class ProductivityEntry(BaseModel):
     date: str  # ISO date string YYYY-MM-DD
     tasks_completed: int
+
+
+class AgentCostEntry(BaseModel):
+    agent_type_name: str
+    total_cost_cents: int
+    total_tokens_in: int
+    total_tokens_out: int
+    instance_count: int
+
+
+class BudgetOverviewEntry(BaseModel):
+    project_id: str
+    project_title: str
+    budget_cents: int
+    spent_cents: int
+
+
+class BudgetOverview(BaseModel):
+    projects: list[BudgetOverviewEntry]
+    total_budget_cents: int
+    total_spent_cents: int

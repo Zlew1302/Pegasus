@@ -2,14 +2,43 @@
 
 import useSWR from "swr";
 import { apiFetch, fetcher } from "@/lib/api";
-import type { AgentInstance, AgentInstanceWithTask, AgentSuggestion, AgentType, ExecutionStep } from "@/types";
+import type { AgentInstance, AgentInstanceWithTask, AgentSuggestion, AgentType, AgentTypeCreateInput, AvailableTool, ExecutionStep } from "@/types";
 
 export function useAgentTypes() {
-  const { data, error } = useSWR<AgentType[]>("/agents/types", fetcher);
+  const { data, error, mutate } = useSWR<AgentType[]>("/agents/types", fetcher);
   return {
     agentTypes: data ?? [],
     isLoading: !data && !error,
+    mutate,
   };
+}
+
+export function useAvailableTools() {
+  const { data, error } = useSWR<AvailableTool[]>("/agents/tools/available", fetcher);
+  return {
+    tools: data ?? [],
+    isLoading: !data && !error,
+  };
+}
+
+export async function createAgentType(input: AgentTypeCreateInput) {
+  return apiFetch<AgentType>("/agents/types", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateAgentType(typeId: string, input: Partial<AgentTypeCreateInput>) {
+  return apiFetch<AgentType>(`/agents/types/${typeId}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteAgentType(typeId: string) {
+  return apiFetch<void>(`/agents/types/${typeId}`, {
+    method: "DELETE",
+  });
 }
 
 export function useAgentInstance(

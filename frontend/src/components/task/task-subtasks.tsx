@@ -7,6 +7,13 @@ import {
   ListTree,
   Plus,
 } from "lucide-react";
+
+const PRIORITY_OPTIONS = [
+  { value: "low", label: "Niedrig", color: "bg-blue-500" },
+  { value: "medium", label: "Mittel", color: "bg-yellow-500" },
+  { value: "high", label: "Hoch", color: "bg-orange-500" },
+  { value: "critical", label: "Kritisch", color: "bg-red-500" },
+] as const;
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { Task } from "@/types";
@@ -31,6 +38,7 @@ export function TaskSubtasks({
   const [showForm, setShowForm] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newPriority, setNewPriority] = useState("medium");
+  const [priorityOpen, setPriorityOpen] = useState(false);
 
   const subtasks = allTasks.filter((t) => t.parent_task_id === taskId);
   const doneCount = subtasks.filter((t) => t.status === "done").length;
@@ -137,16 +145,41 @@ export function TaskSubtasks({
                 className="w-full rounded border border-border bg-secondary/30 px-2 py-1 text-sm outline-none focus:border-[hsl(var(--accent-orange))]"
               />
               <div className="flex items-center gap-2">
-                <select
-                  value={newPriority}
-                  onChange={(e) => setNewPriority(e.target.value)}
-                  className="rounded border border-border bg-secondary/30 px-2 py-1 text-xs outline-none"
-                >
-                  <option value="low">Niedrig</option>
-                  <option value="medium">Mittel</option>
-                  <option value="high">Hoch</option>
-                  <option value="critical">Kritisch</option>
-                </select>
+                {/* Custom priority dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => setPriorityOpen(!priorityOpen)}
+                    className="flex items-center gap-1.5 rounded border border-border bg-secondary/30 px-2 py-1 text-xs transition-colors hover:bg-secondary/50"
+                  >
+                    <span className={`h-2 w-2 rounded-full ${PRIORITY_OPTIONS.find((o) => o.value === newPriority)?.color ?? "bg-yellow-500"}`} />
+                    <span>{PRIORITY_OPTIONS.find((o) => o.value === newPriority)?.label ?? "Mittel"}</span>
+                    <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform ${priorityOpen ? "rotate-180" : ""}`} />
+                  </button>
+                  {priorityOpen && (
+                    <div className="absolute bottom-full left-0 z-50 mb-1 w-36 rounded-lg border border-border bg-card py-1 shadow-xl">
+                      <p className="px-2.5 py-1 text-[10px] font-medium uppercase text-muted-foreground">
+                        Prioritaet
+                      </p>
+                      {PRIORITY_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.value}
+                          onClick={() => {
+                            setNewPriority(opt.value);
+                            setPriorityOpen(false);
+                          }}
+                          className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-xs transition-colors ${
+                            opt.value === newPriority
+                              ? "bg-accent/50 text-accent-foreground"
+                              : "text-foreground hover:bg-secondary/50"
+                          }`}
+                        >
+                          <span className={`h-2 w-2 rounded-full ${opt.color}`} />
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <Button
                   size="sm"
                   onClick={handleSubmit}

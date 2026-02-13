@@ -1,7 +1,8 @@
 "use client";
 
-import { Calendar, ZoomIn, ZoomOut, Eye, EyeOff } from "lucide-react";
+import { Calendar, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SearchBar } from "@/components/ui/search-bar";
 
 type ZoomLevel = "week" | "month" | "quarter";
 
@@ -11,6 +12,8 @@ interface GanttToolbarProps {
   showCompleted: boolean;
   onToggleCompleted: () => void;
   onScrollToToday: () => void;
+  searchQuery: string;
+  onSearchChange: (value: string) => void;
 }
 
 export function GanttToolbar({
@@ -19,9 +22,16 @@ export function GanttToolbar({
   showCompleted,
   onToggleCompleted,
   onScrollToToday,
+  searchQuery,
+  onSearchChange,
 }: GanttToolbarProps) {
   return (
     <div className="flex items-center gap-2 border-b border-border px-4 py-2">
+      <SearchBar
+        value={searchQuery}
+        onChange={onSearchChange}
+        placeholder="Tasks durchsuchen..."
+      />
       <div className="flex gap-1">
         {(["week", "month", "quarter"] as ZoomLevel[]).map((level) => (
           <Button

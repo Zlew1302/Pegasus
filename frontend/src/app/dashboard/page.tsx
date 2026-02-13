@@ -21,6 +21,21 @@ import { ApprovalQueueWidget } from "@/components/dashboard/approval-queue-widge
 import { QuickActionsWidget } from "@/components/dashboard/quick-actions-widget";
 import { DecisionTracksWidget } from "@/components/dashboard/decision-tracks-widget";
 
+/** Format cents into a readable currency string with correct precision. */
+function formatCostDisplay(cents: number): string {
+  if (cents === 0) return "0,00 \u20ac";
+  const euros = cents / 100;
+  if (euros < 1) {
+    // Show full cent precision: "0,10 €"
+    return euros.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " \u20ac";
+  }
+  if (euros < 100) {
+    return euros.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " \u20ac";
+  }
+  // 100+ euros: no decimals
+  return euros.toLocaleString("de-DE", { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + " \u20ac";
+}
+
 // Measure container width with ResizeObserver
 function useContainerWidth() {
   const ref = useRef<HTMLDivElement>(null);
@@ -97,6 +112,7 @@ function DashboardGrid() {
               icon={Bot}
               label="Aktive Agenten"
               value={stats?.active_agents ?? 0}
+              subtext={stats?.active_agents === 0 ? "Keine Agenten aktiv" : stats?.active_agents === 1 ? "Agent arbeitet" : "Agenten arbeiten"}
               color="text-[var(--agent-glow-color)]"
             />
           </WidgetWrapper>
@@ -108,6 +124,7 @@ function DashboardGrid() {
               icon={CheckCircle2}
               label="Tasks diese Woche"
               value={stats?.tasks_completed_this_week ?? 0}
+              subtext="abgeschlossen"
               color="text-green-500"
             />
           </WidgetWrapper>
@@ -118,7 +135,8 @@ function DashboardGrid() {
             <KpiCard
               icon={Wallet}
               label="Token-Kosten 7T"
-              value={`${((stats?.weekly_token_cost_cents ?? 0) / 100).toFixed(2)} €`}
+              value={formatCostDisplay(stats?.weekly_token_cost_cents ?? 0)}
+              subtext="letzte 7 Tage"
               color="text-[hsl(var(--accent-orange))]"
             />
           </WidgetWrapper>
@@ -137,7 +155,7 @@ function DashboardGrid() {
               data={costChartData}
               color="hsl(24 95% 53%)"
               valueLabel="Kosten"
-              formatValue={(v) => `${(v / 100).toFixed(0)}€`}
+              formatValue={(v) => formatCostDisplay(v)}
               embedded
             />
           </WidgetWrapper>

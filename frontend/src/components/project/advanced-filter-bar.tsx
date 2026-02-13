@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Filter, X, Save, RotateCcw } from "lucide-react";
+import { Filter, X, Save, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useSavedViews, createView, deleteView } from "@/hooks/use-saved-views";
 import type { TaskStatus, TaskPriority } from "@/types";
 import { COLUMNS, PRIORITY_CONFIG, TAG_CONFIG } from "@/types";
@@ -91,16 +90,6 @@ export function AdvancedFilterBar({
     <div className="space-y-2">
       {/* Main Bar */}
       <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={filter.search}
-            onChange={(e) => onFilterChange({ ...filter, search: e.target.value })}
-            placeholder="Tasks durchsuchen..."
-            className="h-8 pl-8 text-sm"
-          />
-        </div>
-
         <Button
           variant={expanded ? "secondary" : "ghost"}
           size="sm"

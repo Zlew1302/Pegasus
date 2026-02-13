@@ -19,21 +19,21 @@ function buildDefaultLayout(): DashboardLayoutState {
 
   // Arrange default-visible widgets in the 12-column grid
   const layout: WidgetLayout[] = [
-    // Row 0: KPI cards
-    { i: "kpi-agents", x: 0, y: 0, w: 3, h: 2, minW: 2, minH: 2, maxW: 4, maxH: 2 },
-    { i: "kpi-tasks", x: 3, y: 0, w: 3, h: 2, minW: 2, minH: 2, maxW: 4, maxH: 2 },
-    { i: "kpi-cost", x: 6, y: 0, w: 3, h: 2, minW: 2, minH: 2, maxW: 4, maxH: 2 },
-    { i: "kpi-pending", x: 9, y: 0, w: 3, h: 2, minW: 2, minH: 2, maxW: 4, maxH: 2 },
-    // Row 2: Charts
-    { i: "chart-costs", x: 0, y: 2, w: 6, h: 3, minW: 4, minH: 3, maxW: 12, maxH: 5 },
-    { i: "chart-productivity", x: 6, y: 2, w: 6, h: 3, minW: 4, minH: 3, maxW: 12, maxH: 5 },
-    // Row 5: Feeds + Actions
-    { i: "activity", x: 0, y: 5, w: 4, h: 3, minW: 3, minH: 2, maxW: 8, maxH: 6 },
-    { i: "todos", x: 4, y: 5, w: 4, h: 3, minW: 3, minH: 2, maxW: 8, maxH: 6 },
-    { i: "agents", x: 8, y: 5, w: 4, h: 3, minW: 3, minH: 2, maxW: 8, maxH: 6 },
-    // Row 8: Approvals + Projects
-    { i: "approvals", x: 0, y: 8, w: 6, h: 3, minW: 4, minH: 2, maxW: 12, maxH: 5 },
-    { i: "projects", x: 6, y: 8, w: 6, h: 3, minW: 4, minH: 2, maxW: 12, maxH: 6 },
+    // Row 0: KPI cards (compact — 1 row unit)
+    { i: "kpi-agents", x: 0, y: 0, w: 3, h: 1, minW: 2, minH: 1, maxW: 4, maxH: 1 },
+    { i: "kpi-tasks", x: 3, y: 0, w: 3, h: 1, minW: 2, minH: 1, maxW: 4, maxH: 1 },
+    { i: "kpi-cost", x: 6, y: 0, w: 3, h: 1, minW: 2, minH: 1, maxW: 4, maxH: 1 },
+    { i: "kpi-pending", x: 9, y: 0, w: 3, h: 1, minW: 2, minH: 1, maxW: 4, maxH: 1 },
+    // Row 1: Charts
+    { i: "chart-costs", x: 0, y: 1, w: 6, h: 3, minW: 4, minH: 3, maxW: 12, maxH: 5 },
+    { i: "chart-productivity", x: 6, y: 1, w: 6, h: 3, minW: 4, minH: 3, maxW: 12, maxH: 5 },
+    // Row 4: Feeds + Actions
+    { i: "activity", x: 0, y: 4, w: 4, h: 3, minW: 3, minH: 2, maxW: 8, maxH: 6 },
+    { i: "todos", x: 4, y: 4, w: 4, h: 3, minW: 3, minH: 2, maxW: 8, maxH: 6 },
+    { i: "agents", x: 8, y: 4, w: 4, h: 3, minW: 3, minH: 2, maxW: 8, maxH: 6 },
+    // Row 7: Approvals + Projects
+    { i: "approvals", x: 0, y: 7, w: 6, h: 3, minW: 4, minH: 2, maxW: 12, maxH: 5 },
+    { i: "projects", x: 6, y: 7, w: 6, h: 3, minW: 4, minH: 2, maxW: 12, maxH: 6 },
   ];
 
   return { layout, visibleWidgets };

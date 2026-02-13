@@ -44,20 +44,34 @@ export function BlockContent({
   const ref = useRef<HTMLDivElement>(null);
   const hasFocusRef = useRef(false);
 
+  // Rich-text capable block types (use innerHTML instead of textContent)
+  const isRichText =
+    block.block_type === "paragraph" ||
+    block.block_type === "heading_1" ||
+    block.block_type === "heading_2" ||
+    block.block_type === "heading_3" ||
+    block.block_type === "quote" ||
+    block.block_type === "bullet_list" ||
+    block.block_type === "numbered_list" ||
+    block.block_type === "todo";
+
   // Sync content into DOM only when we DON'T have focus
   useEffect(() => {
     if (!ref.current || hasFocusRef.current) return;
     const isCode = block.block_type === "code";
-    const dom = isCode ? ref.current.innerText : (ref.current.textContent ?? "");
     const target = block.content ?? "";
-    if (dom !== target) {
-      if (isCode) {
-        ref.current.innerText = target;
-      } else {
-        ref.current.textContent = target;
-      }
+    if (isCode) {
+      const dom = ref.current.innerText;
+      if (dom !== target) ref.current.innerText = target;
+    } else if (isRichText) {
+      // For rich text blocks, use innerHTML to preserve formatting
+      const dom = ref.current.innerHTML;
+      if (dom !== target) ref.current.innerHTML = target;
+    } else {
+      const dom = ref.current.textContent ?? "";
+      if (dom !== target) ref.current.textContent = target;
     }
-  }, [block.content, block.block_type]);
+  }, [block.content, block.block_type, isRichText]);
 
   // Focus management — retries until the DOM element is ready.
   // This handles cases where React hasn't committed the new element yet
@@ -139,10 +153,22 @@ export function BlockContent({
   const handleInput = useCallback(
     (e: FormEvent<HTMLDivElement>) => {
       const el = e.target as HTMLDivElement;
-      const content = block.block_type === "code" ? el.innerText : (el.textContent ?? "");
+      let content: string;
+      if (block.block_type === "code") {
+        content = el.innerText;
+      } else if (isRichText) {
+        // Store innerHTML to preserve inline formatting (bold, italic, etc.)
+        content = el.innerHTML;
+        // Normalize: if innerHTML is just text with no tags, keep it clean
+        if (content === el.textContent) {
+          // No formatting — store plain text
+        }
+      } else {
+        content = el.textContent ?? "";
+      }
       onContentChange(block.id, content);
     },
-    [block.id, block.block_type, onContentChange]
+    [block.id, block.block_type, isRichText, onContentChange]
   );
 
   const handleKeyDown = useCallback(
@@ -292,13 +318,21 @@ export function BlockContent({
     paragraph: "Tippe '/' für Befehle...",
   };
 
+  // Alignment from meta_json
+  const meta = parseMeta(block.meta_json);
+  const alignment = (meta.alignment as string) || "left";
+  const alignClass =
+    alignment === "center" ? "text-center" :
+    alignment === "right" ? "text-right" :
+    alignment === "justify" ? "text-justify" : "";
+
   return (
     <div style={{ paddingLeft: block.indent_level * 24 }}>
       <div
         {...editableProps}
         className={`min-h-[1.5em] outline-none ${
           styleMap[block.block_type] ?? styleMap.paragraph
-        } empty:before:text-muted-foreground/40 empty:before:content-[attr(data-placeholder)]`}
+        } ${alignClass} empty:before:text-muted-foreground/40 empty:before:content-[attr(data-placeholder)]`}
         data-placeholder={placeholderMap[block.block_type] ?? placeholderMap.paragraph}
       />
     </div>

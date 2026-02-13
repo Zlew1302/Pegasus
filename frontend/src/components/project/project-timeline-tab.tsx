@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { GanttChart } from "./gantt-chart";
 
 interface ProjectTimelineTabProps {
@@ -7,5 +8,13 @@ interface ProjectTimelineTabProps {
 }
 
 export function ProjectTimelineTab({ projectId }: ProjectTimelineTabProps) {
-  return <GanttChart projectId={projectId} />;
+  const [searchQuery, setSearchQuery] = useState("");
+
+  return (
+    <GanttChart
+      projectId={projectId}
+      searchQuery={searchQuery}
+      onSearchChange={setSearchQuery}
+    />
+  );
 }

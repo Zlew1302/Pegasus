@@ -7,6 +7,7 @@ import { TaskDetail } from "@/components/task/task-detail";
 import { TaskForm } from "@/components/task/task-form";
 import { AdvancedFilterBar, type FilterState } from "./advanced-filter-bar";
 import { BulkActionBar } from "@/components/board/bulk-action-bar";
+import { SearchBar } from "@/components/ui/search-bar";
 import { useTasks } from "@/hooks/use-tasks";
 import { spawnAgent } from "@/hooks/use-agents";
 import { apiFetch, fetcher } from "@/lib/api";
@@ -175,8 +176,13 @@ export function ProjectBoardTab({ projectId }: ProjectBoardTabProps) {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      {/* Filter + Bulk Actions */}
+      {/* Search + Filter + Bulk Actions */}
       <div className="space-y-2 px-4 pt-3">
+        <SearchBar
+          value={filter.search}
+          onChange={(search) => setFilter({ ...filter, search })}
+          placeholder="Tasks durchsuchen..."
+        />
         <AdvancedFilterBar
           projectId={projectId}
           filter={filter}

@@ -21,3 +21,16 @@ class ApprovalResponse(BaseModel):
     description: Optional[str]
     reviewer_comment: Optional[str]
     resolved_at: Optional[datetime]
+
+
+class ApprovalWithContextResponse(ApprovalResponse):
+    """Approval enriched with task / agent / project context."""
+
+    task_title: str | None = None
+    project_id: str | None = None
+    project_title: str | None = None
+    agent_type_name: str | None = None
+    agent_status: str | None = None
+    progress_percent: int | None = None
+    current_step: str | None = None
+    total_steps: int | None = None

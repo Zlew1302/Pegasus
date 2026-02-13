@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   ArrowLeft,
   Bot,
@@ -11,9 +11,12 @@ import {
   Clock,
   Coins,
   Zap,
+  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SearchBar } from "@/components/ui/search-bar";
 import { useProjectAgentInstances, useExecutionSteps } from "@/hooks/use-agents";
+import { AgentCreateDialog } from "@/components/agent/agent-create-dialog";
 import { ExecutionSteps } from "@/components/agent/execution-steps";
 import { InstanceTrackView } from "@/components/tracks/instance-track-view";
 import type { AgentInstanceWithTask, AgentInstanceStatus } from "@/types";
@@ -184,6 +187,8 @@ export function ProjectAgentsTab({ projectId }: ProjectAgentsTabProps) {
   const { instances, isLoading } = useProjectAgentInstances(projectId);
   const [selectedInstance, setSelectedInstance] = useState<AgentInstanceWithTask | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [search, setSearch] = useState("");
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   if (selectedInstance) {
     return (
@@ -197,11 +202,20 @@ export function ProjectAgentsTab({ projectId }: ProjectAgentsTabProps) {
   }
 
   const filtered = instances.filter((inst) => {
-    if (statusFilter === "all") return true;
-    if (statusFilter === "active")
-      return ["initializing", "running", "paused", "waiting_input"].includes(inst.status);
-    if (statusFilter === "completed") return inst.status === "completed";
-    if (statusFilter === "failed") return ["failed", "cancelled"].includes(inst.status);
+    // Status filter
+    if (statusFilter === "active" && !["initializing", "running", "paused", "waiting_input"].includes(inst.status)) return false;
+    if (statusFilter === "completed" && inst.status !== "completed") return false;
+    if (statusFilter === "failed" && !["failed", "cancelled"].includes(inst.status)) return false;
+
+    // Search filter
+    if (search) {
+      const q = search.toLowerCase();
+      const matchTitle = (inst.task_title ?? "").toLowerCase().includes(q);
+      const matchType = (inst.agent_type_name ?? "").toLowerCase().includes(q);
+      const matchStatus = (STATUS_CONFIG[inst.status]?.label ?? "").toLowerCase().includes(q);
+      if (!matchTitle && !matchType && !matchStatus) return false;
+    }
+
     return true;
   });
 
@@ -214,22 +228,46 @@ export function ProjectAgentsTab({ projectId }: ProjectAgentsTabProps) {
 
   return (
     <div className="p-4">
-      {/* Filter Tabs */}
-      <div className="mb-4 flex gap-1">
-        {FILTERS.map((f) => (
-          <button
-            key={f.key}
-            onClick={() => setStatusFilter(f.key)}
-            className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-              statusFilter === f.key
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted"
-            }`}
-          >
-            {f.label}
+      {/* Search */}
+      <div className="mb-3">
+        <SearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Agenten durchsuchen..."
+        />
+      </div>
+
+      {/* Filter Tabs + Create Button */}
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex gap-1">
+          {FILTERS.map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setStatusFilter(f.key)}
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                statusFilter === f.key
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              {f.label}
           </button>
         ))}
+        </div>
+        <button
+          onClick={() => setShowCreateDialog(true)}
+          className="flex items-center gap-1.5 rounded-lg bg-[var(--agent-glow-color)] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:opacity-90"
+        >
+          <Plus className="h-3 w-3" />
+          Neuer Agent
+        </button>
       </div>
+
+      {/* Agent Create Dialog */}
+      <AgentCreateDialog
+        open={showCreateDialog}
+        onClose={() => setShowCreateDialog(false)}
+      />
 
       {isLoading && (
         <div className="flex items-center justify-center py-12">

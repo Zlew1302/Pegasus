@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { Loader2, Check } from "lucide-react";
 import { useDocument } from "@/hooks/use-documents";
 import { BlockList } from "./block-list";
+import { FloatingToolbar } from "./floating-toolbar";
 import type { FocusRequest } from "./block-content";
 import type { Block, BlockType } from "@/types";
 
@@ -44,6 +45,7 @@ export function DocumentEditor({ documentId }: DocumentEditorProps) {
   // Focus system: ref holds the request, state counter triggers render
   const [focusRequest, setFocusRequest] = useState<FocusRequest | null>(null);
   const pendingFocusRef = useRef<FocusRequest | null>(null);
+  const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
 
   const titleRef = useRef<HTMLHeadingElement>(null);
   const titleHasFocusRef = useRef(false);
@@ -156,6 +158,16 @@ export function DocumentEditor({ documentId }: DocumentEditorProps) {
     [scheduleSave]
   );
 
+  // ── Track focused block for toolbar ─────────────────────────
+  const handleBlockFocus = useCallback(
+    (blockId: string) => {
+      setFocusedBlockId(blockId);
+    },
+    []
+  );
+
+  const focusedBlock = blocks.find((b) => b.id === focusedBlockId);
+
   // ── Change block type ────────────────────────────────────────
   const handleChangeType = useCallback(
     (blockId: string, type: BlockType) => {
@@ -179,6 +191,29 @@ export function DocumentEditor({ documentId }: DocumentEditorProps) {
       apiUpdateBlock(blockId, updates);
     },
     [apiUpdateBlock, focusBlock]
+  );
+
+  // ── Toolbar: block type change (heading etc.) ──────────────
+  const handleToolbarBlockTypeChange = useCallback(
+    (blockType: string) => {
+      if (!focusedBlockId) return;
+      handleChangeType(focusedBlockId, blockType as BlockType);
+    },
+    [focusedBlockId, handleChangeType]
+  );
+
+  // ── Toolbar: alignment change ──────────────────────────────
+  const handleToolbarAlignmentChange = useCallback(
+    (alignment: string) => {
+      if (!focusedBlockId) return;
+      const block = blocksRef.current.find((b) => b.id === focusedBlockId);
+      if (!block) return;
+      let meta: Record<string, unknown> = {};
+      try { meta = block.meta_json ? JSON.parse(block.meta_json) : {}; } catch { /* empty */ }
+      const newMeta = JSON.stringify({ ...meta, alignment });
+      handleMetaChange(focusedBlockId, newMeta);
+    },
+    [focusedBlockId, handleMetaChange]
   );
 
   // ── Add block ────────────────────────────────────────────────
@@ -373,6 +408,13 @@ export function DocumentEditor({ documentId }: DocumentEditorProps) {
         onBlur={() => { titleHasFocusRef.current = false; }}
       />
 
+      {/* Floating Rich-Text Toolbar */}
+      <FloatingToolbar
+        onBlockTypeChange={handleToolbarBlockTypeChange}
+        onAlignmentChange={handleToolbarAlignmentChange}
+        currentBlockType={focusedBlock?.block_type}
+      />
+
       {/* Blocks */}
       <BlockList
         blocks={blocks}
@@ -387,6 +429,7 @@ export function DocumentEditor({ documentId }: DocumentEditorProps) {
         onMergeWithPrevious={handleMergeWithPrevious}
         onReorder={handleReorder}
         onFocusBlock={focusBlock}
+        onBlockFocus={handleBlockFocus}
       />
 
       {/* Add block at end */}

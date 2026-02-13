@@ -6,8 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.approval import Approval
+from app.models.agent import AgentInstance, AgentType
 from app.models.task import Task
-from app.schemas.approval import ApprovalResolve, ApprovalResponse
+from app.models.project import Project
+from app.schemas.approval import ApprovalResolve, ApprovalResponse, ApprovalWithContextResponse
 from app.services.agent_service import resume_agent_with_feedback
 
 router = APIRouter(prefix="/api/approvals", tags=["approvals"])
@@ -23,6 +25,51 @@ async def list_approvals(
         query = query.where(Approval.status == status)
     result = await db.execute(query)
     return [ApprovalResponse.model_validate(a) for a in result.scalars().all()]
+
+
+@router.get("/with-context", response_model=list[ApprovalWithContextResponse])
+async def list_approvals_with_context(
+    status: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """List approvals enriched with task, project, and agent context."""
+    stmt = (
+        select(
+            Approval,
+            Task.title.label("task_title"),
+            Task.project_id.label("project_id"),
+            Project.title.label("project_title"),
+            AgentType.name.label("agent_type_name"),
+            AgentInstance.status.label("agent_status"),
+            AgentInstance.progress_percent.label("progress_percent"),
+            AgentInstance.current_step.label("current_step"),
+            AgentInstance.total_steps.label("total_steps"),
+        )
+        .join(Task, Approval.task_id == Task.id)
+        .outerjoin(Project, Task.project_id == Project.id)
+        .outerjoin(AgentInstance, Approval.agent_instance_id == AgentInstance.id)
+        .outerjoin(AgentType, AgentInstance.agent_type_id == AgentType.id)
+    )
+    if status:
+        stmt = stmt.where(Approval.status == status)
+    stmt = stmt.order_by(Approval.requested_at.desc())
+
+    result = await db.execute(stmt)
+    rows = result.all()
+    return [
+        ApprovalWithContextResponse(
+            **ApprovalResponse.model_validate(row[0]).model_dump(),
+            task_title=row[1],
+            project_id=row[2],
+            project_title=row[3],
+            agent_type_name=row[4],
+            agent_status=row[5],
+            progress_percent=row[6],
+            current_step=row[7],
+            total_steps=row[8],
+        )
+        for row in rows
+    ]
 
 
 @router.get("/{approval_id}", response_model=ApprovalResponse)

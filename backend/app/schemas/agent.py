@@ -18,6 +18,43 @@ class AgentTypeResponse(BaseModel):
     is_custom: bool
 
 
+class AgentTypeCreateRequest(BaseModel):
+    name: str
+    description: str | None = None
+    capabilities: str | None = None  # JSON array string
+    tools: str | None = None  # JSON array string
+    system_prompt: str | None = None
+    model: str = "claude-sonnet-4-20250514"
+    temperature: float = 0.3
+    max_tokens: int = 4096
+    max_concurrent_instances: int = 5
+    trust_level: str = "propose"  # propose | execute | full_auto
+    context_scope: str | None = None
+
+
+class AgentTypeUpdateRequest(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    capabilities: str | None = None
+    tools: str | None = None
+    system_prompt: str | None = None
+    model: str | None = None
+    temperature: float | None = None
+    max_tokens: int | None = None
+    max_concurrent_instances: int | None = None
+    trust_level: str | None = None
+    context_scope: str | None = None
+
+
+class AgentTypeDetailResponse(AgentTypeResponse):
+    """Volle Antwort mit allen Konfigurationsfeldern."""
+    tools: str | None = None
+    system_prompt: str | None = None
+    temperature: float = 0.3
+    max_tokens: int = 4096
+    context_scope: str | None = None
+
+
 class AgentSpawnRequest(BaseModel):
     agent_type_id: str
     task_id: str

@@ -15,6 +15,7 @@ interface KanbanColumnProps {
   onCreateTask: () => void;
   selectedTaskIds?: Set<string>;
   onToggleSelect?: (taskId: string) => void;
+  isDropTarget?: boolean;
 }
 
 export function KanbanColumn({
@@ -26,14 +27,19 @@ export function KanbanColumn({
   onCreateTask,
   selectedTaskIds,
   onToggleSelect,
+  isDropTarget = false,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id });
 
   return (
     <div
       ref={setNodeRef}
-      className={`flex h-full w-72 shrink-0 flex-col rounded-lg bg-muted/30 ${
-        isOver ? "ring-2 ring-[var(--agent-glow-color)]/50" : ""
+      className={`flex h-full w-72 shrink-0 flex-col rounded-lg bg-muted/30 transition-all duration-200 ${
+        isDropTarget
+          ? "border border-[hsl(var(--accent-orange))]/40 shadow-[0_0_12px_-3px_hsl(var(--accent-orange)/0.3)]"
+          : isOver
+            ? "ring-2 ring-[var(--agent-glow-color)]/50"
+            : "border border-transparent"
       }`}
     >
       {/* Column Header */}
@@ -66,6 +72,14 @@ export function KanbanColumn({
             onToggleSelect={onToggleSelect ? () => onToggleSelect(task.id) : undefined}
           />
         ))}
+        {/* Drop zone placeholder */}
+        {isDropTarget && (
+          <div className="flex h-16 items-center justify-center rounded-lg border-2 border-dashed border-[hsl(var(--accent-orange))]/30 bg-[hsl(var(--accent-orange))]/5 transition-all duration-200">
+            <span className="text-xs text-[hsl(var(--accent-orange))]/60">
+              Hier ablegen
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

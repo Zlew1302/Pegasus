@@ -7,6 +7,8 @@ import type {
   ActivityEntry,
   CostEntry,
   ProductivityEntry,
+  AgentCostEntry,
+  BudgetOverview,
 } from "@/types";
 
 const SWR_STABLE = {
@@ -57,4 +59,25 @@ export function useProductivity(from?: string, to?: string) {
     SWR_STABLE
   );
   return { productivity: data ?? [], error, isLoading };
+}
+
+export function useAgentCosts(projectId?: string) {
+  const params = new URLSearchParams();
+  if (projectId) params.set("project_id", projectId);
+  const query = params.toString();
+  const { data, error, isLoading } = useSWR<AgentCostEntry[]>(
+    `/dashboard/agent-costs${query ? `?${query}` : ""}`,
+    fetcher,
+    SWR_STABLE
+  );
+  return { agentCosts: data ?? [], error, isLoading };
+}
+
+export function useBudgetOverview() {
+  const { data, error, isLoading } = useSWR<BudgetOverview>(
+    "/dashboard/budget-overview",
+    fetcher,
+    SWR_STABLE
+  );
+  return { budgetOverview: data, error, isLoading };
 }

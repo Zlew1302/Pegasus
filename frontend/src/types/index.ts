@@ -78,6 +78,31 @@ export interface AgentType {
   max_concurrent_instances: number;
   trust_level: string;
   is_custom: boolean;
+  // Extended fields (from detail endpoint)
+  tools?: string | null;
+  system_prompt?: string | null;
+  temperature?: number;
+  max_tokens?: number;
+  context_scope?: string | null;
+}
+
+export interface AgentTypeCreateInput {
+  name: string;
+  description?: string;
+  capabilities?: string;
+  tools?: string;
+  system_prompt?: string;
+  model?: string;
+  temperature?: number;
+  max_tokens?: number;
+  max_concurrent_instances?: number;
+  trust_level?: string;
+  context_scope?: string;
+}
+
+export interface AvailableTool {
+  name: string;
+  description: string;
 }
 
 export interface AgentInstance {
@@ -150,6 +175,17 @@ export interface Approval {
   description: string | null;
   reviewer_comment: string | null;
   resolved_at: string | null;
+}
+
+export interface ApprovalWithContext extends Approval {
+  task_title: string | null;
+  project_id: string | null;
+  project_title: string | null;
+  agent_type_name: string | null;
+  agent_status: string | null;
+  progress_percent: number | null;
+  current_step: string | null;
+  total_steps: number | null;
 }
 
 export interface TaskHistory {
@@ -258,6 +294,27 @@ export interface CostEntry {
 export interface ProductivityEntry {
   date: string;
   tasks_completed: number;
+}
+
+export interface AgentCostEntry {
+  agent_type_name: string;
+  total_cost_cents: number;
+  total_tokens_in: number;
+  total_tokens_out: number;
+  instance_count: number;
+}
+
+export interface BudgetOverviewEntry {
+  project_id: string;
+  project_title: string;
+  budget_cents: number;
+  spent_cents: number;
+}
+
+export interface BudgetOverview {
+  projects: BudgetOverviewEntry[];
+  total_budget_cents: number;
+  total_spent_cents: number;
 }
 
 // --- Todo Types ---

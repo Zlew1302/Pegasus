@@ -13,6 +13,9 @@ from app.models.task import Task, TaskHistory
 from app.models.project import Project
 from app.schemas.dashboard import (
     ActivityEntry,
+    AgentCostEntry,
+    BudgetOverview,
+    BudgetOverviewEntry,
     CostEntry,
     DashboardStats,
     ProductivityEntry,
@@ -181,5 +184,92 @@ async def get_productivity(
     )
     return [
         ProductivityEntry(date=str(row.day), tasks_completed=row.count)
+        for row in result.all()
+    ]
+
+
+@router.get("/budget-overview", response_model=BudgetOverview)
+async def get_budget_overview(db: AsyncSession = Depends(get_db)):
+    """Budget overview across all projects with real spent data."""
+    # Subquery: sum of cost_cents per project via ExecutionStep → AgentInstance → Task
+    spent_sq = (
+        select(
+            Task.project_id,
+            func.coalesce(func.sum(ExecutionStep.cost_cents), 0).label("spent"),
+        )
+        .join(AgentInstance, AgentInstance.task_id == Task.id)
+        .join(ExecutionStep, ExecutionStep.agent_instance_id == AgentInstance.id)
+        .group_by(Task.project_id)
+        .subquery()
+    )
+
+    result = await db.execute(
+        select(
+            Project.id,
+            Project.title,
+            Project.budget_cents,
+            func.coalesce(spent_sq.c.spent, 0).label("spent_cents"),
+        )
+        .outerjoin(spent_sq, Project.id == spent_sq.c.project_id)
+        .order_by(Project.title)
+    )
+
+    entries = []
+    total_budget = 0
+    total_spent = 0
+    for row in result.all():
+        entry = BudgetOverviewEntry(
+            project_id=row.id,
+            project_title=row.title,
+            budget_cents=row.budget_cents,
+            spent_cents=row.spent_cents,
+        )
+        entries.append(entry)
+        total_budget += row.budget_cents
+        total_spent += row.spent_cents
+
+    return BudgetOverview(
+        projects=entries,
+        total_budget_cents=total_budget,
+        total_spent_cents=total_spent,
+    )
+
+
+@router.get("/agent-costs", response_model=list[AgentCostEntry])
+async def get_agent_costs(
+    project_id: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Cost breakdown by agent type, optionally filtered by project."""
+    query = (
+        select(
+            AgentType.name.label("agent_type_name"),
+            func.coalesce(func.sum(ExecutionStep.cost_cents), 0).label("total_cost_cents"),
+            func.coalesce(func.sum(ExecutionStep.tokens_in), 0).label("total_tokens_in"),
+            func.coalesce(func.sum(ExecutionStep.tokens_out), 0).label("total_tokens_out"),
+            func.count(func.distinct(AgentInstance.id)).label("instance_count"),
+        )
+        .join(AgentInstance, AgentInstance.agent_type_id == AgentType.id)
+        .join(ExecutionStep, ExecutionStep.agent_instance_id == AgentInstance.id)
+    )
+
+    if project_id:
+        query = query.join(Task, AgentInstance.task_id == Task.id).where(
+            Task.project_id == project_id
+        )
+
+    query = query.group_by(AgentType.id, AgentType.name).order_by(
+        func.sum(ExecutionStep.cost_cents).desc()
+    )
+
+    result = await db.execute(query)
+    return [
+        AgentCostEntry(
+            agent_type_name=row.agent_type_name,
+            total_cost_cents=row.total_cost_cents,
+            total_tokens_in=row.total_tokens_in,
+            total_tokens_out=row.total_tokens_out,
+            instance_count=row.instance_count,
+        )
         for row in result.all()
     ]

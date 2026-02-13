@@ -8,10 +8,12 @@ interface KpiCardProps {
   icon: LucideIcon;
   label: string;
   value: number | string;
+  subtext?: string;
   trend?: { value: number; label: string };
   color?: string;
   sparklineData?: number[];
   href?: string;
+  onClick?: () => void;
 }
 
 function Sparkline({ data, color }: { data: number[]; color: string }) {
@@ -21,8 +23,8 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
   const max = Math.max(...data);
   const range = max - min || 1;
 
-  const width = 64;
-  const height = 24;
+  const width = 48;
+  const height = 20;
   const padding = 2;
 
   const points = data
@@ -33,7 +35,6 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
     })
     .join(" ");
 
-  // Resolve CSS variable color to a usable stroke
   const strokeColor = color.includes("var(")
     ? "currentColor"
     : color.startsWith("text-")
@@ -46,7 +47,7 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
       height={height}
       viewBox={`0 0 ${width} ${height}`}
       className={color.startsWith("text-") ? color : ""}
-      style={{ opacity: 0.6 }}
+      style={{ opacity: 0.5 }}
     >
       <polyline
         points={points}
@@ -64,52 +65,54 @@ export function KpiCard({
   icon: Icon,
   label,
   value,
+  subtext,
   trend,
   color = "text-foreground",
   sparklineData,
   href,
+  onClick,
 }: KpiCardProps) {
   const router = useRouter();
 
-  const handleClick = href
-    ? () => router.push(href)
-    : undefined;
+  const handleClick = onClick
+    ? onClick
+    : href
+      ? () => router.push(href)
+      : undefined;
 
   return (
     <div
       onClick={handleClick}
-      className={`flex h-full flex-col justify-between rounded-lg border border-border bg-card p-4 ${
-        href ? "cursor-pointer transition-colors hover:border-[hsl(var(--accent-orange))]/30" : ""
+      className={`flex h-full items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 ${
+        handleClick ? "cursor-pointer transition-colors hover:border-[hsl(var(--accent-orange))]/30" : ""
       }`}
     >
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium uppercase text-muted-foreground">
-          {label}
-        </span>
-        <Icon className={`h-4 w-4 ${color}`} />
-      </div>
-      <div className="mt-2 flex items-end justify-between">
-        <div>
-          <span className={`text-2xl font-bold ${color}`}>{value}</span>
+      <Icon className={`h-4 w-4 shrink-0 ${color}`} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline gap-2">
+          <span className={`text-base font-bold leading-none ${color}`}>{value}</span>
           {trend && (
             <span
-              className={`ml-2 inline-flex items-center gap-0.5 text-xs ${
+              className={`inline-flex items-center gap-0.5 text-[10px] ${
                 trend.value >= 0 ? "text-green-500" : "text-red-400"
               }`}
             >
               {trend.value >= 0 ? (
-                <TrendingUp className="h-3 w-3" />
+                <TrendingUp className="h-2.5 w-2.5" />
               ) : (
-                <TrendingDown className="h-3 w-3" />
+                <TrendingDown className="h-2.5 w-2.5" />
               )}
               {trend.label}
             </span>
           )}
         </div>
-        {sparklineData && sparklineData.length > 1 && (
-          <Sparkline data={sparklineData} color={color} />
-        )}
+        <p className="text-[10px] leading-tight text-muted-foreground">
+          {label}{subtext ? ` · ${subtext}` : ""}
+        </p>
       </div>
+      {sparklineData && sparklineData.length > 1 && (
+        <Sparkline data={sparklineData} color={color} />
+      )}
     </div>
   );
 }

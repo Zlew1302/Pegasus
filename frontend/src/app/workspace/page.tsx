@@ -8,6 +8,7 @@ import {
   Pin,
   Clock,
   Loader2,
+  ChevronDown,
 } from "lucide-react";
 import { useRecentDocuments, useDocuments } from "@/hooks/use-documents";
 import { useProjects } from "@/hooks/use-projects";
@@ -176,6 +177,7 @@ function CreateDocDialog({
   const [title, setTitle] = useState("");
   const [projectId, setProjectId] = useState(projects[0]?.id ?? "");
   const [creating, setCreating] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const { createDocument } = useDocuments(projectId || null);
 
   const handleCreate = async () => {
@@ -189,26 +191,49 @@ function CreateDocDialog({
     }
   };
 
+  const selectedProject = projects.find((p) => p.id === projectId);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
       <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-2xl">
         <h2 className="mb-4 text-lg font-semibold">Neues Dokument</h2>
 
-        <div className="mb-4">
+        {/* Custom project dropdown */}
+        <div className="relative mb-4">
           <label className="mb-1 block text-xs text-muted-foreground">
             Projekt
           </label>
-          <select
-            value={projectId}
-            onChange={(e) => setProjectId(e.target.value)}
-            className="w-full rounded-md border border-border bg-secondary/50 px-3 py-2 text-sm outline-none"
+          <button
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            className="flex w-full items-center justify-between rounded-md border border-border bg-secondary/50 px-3 py-2 text-left text-sm transition-colors hover:bg-secondary/70"
           >
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.title}
-              </option>
-            ))}
-          </select>
+            <span>{selectedProject?.title ?? "Projekt waehlen..."}</span>
+            <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${dropdownOpen ? "rotate-180" : ""}`} />
+          </button>
+          {dropdownOpen && (
+            <div className="absolute left-0 top-full z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-border bg-card py-1 shadow-xl">
+              <p className="px-2.5 py-1 text-[10px] font-medium uppercase text-muted-foreground">
+                Projekt waehlen
+              </p>
+              {projects.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    setProjectId(p.id);
+                    setDropdownOpen(false);
+                  }}
+                  className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-xs transition-colors ${
+                    p.id === projectId
+                      ? "bg-accent/50 text-accent-foreground"
+                      : "text-foreground hover:bg-secondary/50"
+                  }`}
+                >
+                  <span className="h-2 w-2 rounded-full bg-[hsl(var(--accent-orange))]" />
+                  {p.title}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="mb-6">

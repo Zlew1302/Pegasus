@@ -13,6 +13,7 @@ import { ProjectTimelineTab } from "@/components/project/project-timeline-tab";
 import { ProjectBudgetTab } from "@/components/project/project-budget-tab";
 import { ProjectAgentsTab } from "@/components/project/project-agents-tab";
 import { KnowledgeManager } from "@/components/profile/knowledge-manager";
+import { IntegrationManager } from "@/components/profile/integration-manager";
 
 const TABS = [
   { key: "overview", label: "Übersicht", icon: LayoutGrid },
@@ -30,7 +31,7 @@ export default function ProjectDetailPage() {
   const router = useRouter();
   const projectId = params.id as string;
 
-  const { data: project } = useSWR<Project>(
+  const { data: project, mutate: mutateProject } = useSWR<Project>(
     projectId ? `/projects/${projectId}` : null,
     fetcher
   );
@@ -127,12 +128,14 @@ export default function ProjectDetailPage() {
             <ProjectBudgetTab
               projectId={projectId}
               budgetCents={project.budget_cents}
+              mutateProject={mutateProject}
             />
           </div>
         )}
         {activeTab === "knowledge" && (
-          <div className="h-full overflow-y-auto p-4">
+          <div className="h-full overflow-y-auto p-4 space-y-4">
             <KnowledgeManager projectId={projectId} />
+            <IntegrationManager />
           </div>
         )}
       </div>
