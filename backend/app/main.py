@@ -14,9 +14,10 @@ from app.middleware import (
 )
 from app.models import Base
 from app.routers import (
-    agents, approvals, commands, comments, dashboard, documents, knowledge,
-    notifications, outputs, profile,
-    projects, saved_views, spotlight, stream, tasks, teams, todos, tracks,
+    activity, agents, approvals, attachments, commands, comments, dashboard,
+    documents, export, knowledge, notifications, outputs, profile,
+    projects, saved_views, search, spotlight, stream, tasks, teams,
+    templates, time_tracking, todos, tracks, webhooks,
 )
 
 # Initialize structured logging before anything else
@@ -32,6 +33,12 @@ async def lifespan(app: FastAPI):
     await seed_essentials()
     # Ensure uploads directory exists
     os.makedirs(os.path.join(os.getcwd(), "uploads"), exist_ok=True)
+    os.makedirs(os.path.join(os.getcwd(), "uploads", "attachments"), exist_ok=True)
+    # Start recurring task scheduler
+    import asyncio
+    from app.database import async_session
+    from app.services.scheduler_service import scheduler_loop
+    asyncio.create_task(scheduler_loop(async_session))
     yield
 
 
@@ -74,6 +81,13 @@ app.include_router(documents.router)
 app.include_router(spotlight.router)
 app.include_router(knowledge.router)
 app.include_router(tracks.router)
+app.include_router(activity.router)
+app.include_router(attachments.router)
+app.include_router(search.router)
+app.include_router(time_tracking.router)
+app.include_router(templates.router)
+app.include_router(webhooks.router)
+app.include_router(export.router)
 
 
 @app.get("/api/health")

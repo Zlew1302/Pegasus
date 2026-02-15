@@ -90,6 +90,12 @@ export async function cancelAgent(instanceId: string) {
   });
 }
 
+export async function restartAgent(instanceId: string) {
+  return apiFetch<AgentInstance>(`/agents/instances/${instanceId}/restart`, {
+    method: "POST",
+  });
+}
+
 export function useExecutionSteps(instanceId: string | null) {
   const { data, error } = useSWR<ExecutionStep[]>(
     instanceId ? `/agents/instances/${instanceId}/steps` : null,
@@ -134,4 +140,26 @@ export async function sendMessageToAgent(instanceId: string, message: string) {
     method: "POST",
     body: JSON.stringify({ message }),
   });
+}
+
+export function useAllAgentInstances(statusFilter?: string) {
+  const params = new URLSearchParams();
+  if (statusFilter) params.set("status", statusFilter);
+  const query = params.toString();
+  const path = `/agents/instances${query ? `?${query}` : ""}`;
+
+  const { data, error, mutate } = useSWR<AgentInstanceWithTask[]>(
+    path,
+    fetcher,
+    {
+      refreshInterval: 10000,
+      revalidateOnFocus: false,
+      isPaused: () => typeof document !== "undefined" && document.hidden,
+    }
+  );
+  return {
+    instances: data ?? [],
+    isLoading: !data && !error,
+    mutate,
+  };
 }

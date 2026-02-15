@@ -89,7 +89,7 @@ export function ProjectDocsTab({ projectId }: ProjectDocsTabProps) {
                 )}
               </button>
               <span className="text-[11px] text-muted-foreground">
-                {doc.block_count} {doc.block_count === 1 ? "Block" : "Bloecke"}
+                {doc.block_count} {doc.block_count === 1 ? "Block" : "Blöcke"}
               </span>
               <button
                 onClick={async (e) => {

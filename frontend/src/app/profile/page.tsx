@@ -14,6 +14,7 @@ import { AuditTrail } from "@/components/profile/audit-trail";
 import { TokenUsageChart } from "@/components/profile/token-usage-chart";
 import { KnowledgeManager } from "@/components/profile/knowledge-manager";
 import { IntegrationManager } from "@/components/profile/integration-manager";
+import { WebhookManager } from "@/components/profile/webhook-manager";
 import { Button } from "@/components/ui/button";
 
 // ── Main page ───────────────────────────────────────────────────
@@ -163,7 +164,7 @@ export default function ProfilePage() {
                   <User className="h-3.5 w-3.5 text-muted-foreground" />
                 </div>
                 <h3 className="text-sm font-semibold tracking-tight">
-                  Persoenliches
+                  Persönliches
                 </h3>
               </div>
 
@@ -189,14 +190,14 @@ export default function ProfilePage() {
                     Globaler System-Prompt
                   </label>
                   <p className="mb-2 text-[11px] leading-relaxed text-muted-foreground/60">
-                    Dieser Prompt wird an alle Agenten angehaengt. Pro Projekt
-                    ueberschreibbar.
+                    Dieser Prompt wird an alle Agenten angehängt. Pro Projekt
+                    überschreibbar.
                   </p>
                   <textarea
                     value={systemPrompt}
                     onChange={(e) => setSystemPrompt(e.target.value)}
                     rows={8}
-                    placeholder="z.B. Antworte immer auf Deutsch. Sei praezise und faktenbasiert."
+                    placeholder="z.B. Antworte immer auf Deutsch. Sei präzise und faktenbasiert."
                     className="w-full rounded-lg border border-border/60 bg-secondary/20 px-3.5 py-2.5 font-mono text-xs leading-relaxed outline-none transition-all duration-200 placeholder:text-muted-foreground/40 focus:border-[hsl(var(--accent-orange))]/60 focus:bg-secondary/30 focus:ring-1 focus:ring-[hsl(var(--accent-orange))]/20"
                   />
                 </div>
@@ -220,7 +221,7 @@ export default function ProfilePage() {
                   </Button>
                   {showSaved && (
                     <span className="text-xs text-green-400">
-                      Aenderungen gespeichert
+                      Änderungen gespeichert
                     </span>
                   )}
                 </div>
@@ -248,6 +249,11 @@ export default function ProfilePage() {
             {/* Knowledge Base */}
             <div className="profile-card-enhanced">
               <KnowledgeManager />
+            </div>
+
+            {/* Webhooks */}
+            <div className="profile-card-enhanced">
+              <WebhookManager />
             </div>
 
             {/* Audit Trail */}

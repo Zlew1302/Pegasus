@@ -7,11 +7,19 @@ from abc import ABC, abstractmethod
 from datetime import datetime, UTC
 from uuid import uuid4
 
-from anthropic import AsyncAnthropic, RateLimitError, APIStatusError
+from anthropic import RateLimitError, APIStatusError
+
+# Also catch OpenAI errors if available
+try:
+    from openai import RateLimitError as OpenAIRateLimitError, APIStatusError as OpenAIAPIStatusError
+except ImportError:
+    OpenAIRateLimitError = None
+    OpenAIAPIStatusError = None
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from agents.briefing import TaskBriefing
+from agents.llm import create_llm_provider
 from app.models.agent import AgentInstance
 from app.models.approval import Approval
 from app.models.execution import ExecutionStep
@@ -33,7 +41,15 @@ class BaseAgent(ABC):
         self.briefing = briefing
         self.session_factory = session_factory
         self.sse = sse_manager
-        self.client = AsyncAnthropic()
+        # Create LLM provider (supports Anthropic, OpenAI, Kimi, etc.)
+        self.llm = create_llm_provider(
+            provider=briefing.provider,
+            model=briefing.model,
+            api_key=briefing.provider_api_key,
+            base_url=briefing.provider_base_url,
+        )
+        # Keep self.client for backward compatibility with existing agent code
+        self.client = self.llm.client if hasattr(self.llm, 'client') else None
         self.cancelled = False
         self._paused = asyncio.Event()
         self._paused.set()  # Not paused by default
@@ -58,6 +74,51 @@ class BaseAgent(ABC):
 
     async def emit(self, event_type: str, data: dict):
         await self.sse.emit(self.instance_id, SSEEvent(event=event_type, data=data))
+
+    async def _call_llm_simple(
+        self,
+        user_message: str,
+        system: str | None = None,
+    ) -> str:
+        """Call LLM (any provider) without streaming. Universal replacement for _call_claude.
+
+        Returns the text response. Also records execution step and cost.
+        """
+        sys_prompt = system or self.system_prompt or ""
+        start_time = time.time()
+
+        llm_response = await self._call_with_retry(
+            lambda: self.llm.create_message(
+                system=sys_prompt,
+                messages=[{"role": "user", "content": user_message}],
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+            )
+        )
+
+        duration_ms = int((time.time() - start_time) * 1000)
+        cost = self.llm.estimate_cost(llm_response.input_tokens, llm_response.output_tokens)
+
+        await self._record_execution_step(
+            step_type="llm_call",
+            description=f"LLM Call ({llm_response.input_tokens}in/{llm_response.output_tokens}out)",
+            model=self.model,
+            tokens_in=llm_response.input_tokens,
+            tokens_out=llm_response.output_tokens,
+            cost_cents=int(cost),
+            duration_ms=duration_ms,
+        )
+
+        # Emit final thought
+        if llm_response.content:
+            snippet = llm_response.content[:300]
+            await self._append_thought(snippet)
+            await self.emit("thought", {
+                "text": snippet,
+                "timestamp": datetime.now(UTC).isoformat(),
+            })
+
+        return llm_response.content
 
     @abstractmethod
     async def run(self) -> str:
@@ -269,10 +330,18 @@ class BaseAgent(ABC):
 
     async def _call_with_retry(self, coro_factory, max_retries: int = 3):
         """Call an async function with exponential backoff on rate limits."""
+        # Build exception tuples dynamically (Anthropic + OpenAI if installed)
+        rate_limit_errors = (RateLimitError,)
+        api_status_errors = (APIStatusError,)
+        if OpenAIRateLimitError:
+            rate_limit_errors = (RateLimitError, OpenAIRateLimitError)
+        if OpenAIAPIStatusError:
+            api_status_errors = (APIStatusError, OpenAIAPIStatusError)
+
         for attempt in range(max_retries + 1):
             try:
                 return await coro_factory()
-            except RateLimitError as e:
+            except rate_limit_errors as e:
                 if attempt == max_retries:
                     raise
                 wait = 2 ** attempt * 2  # 2s, 4s, 8s
@@ -283,8 +352,9 @@ class BaseAgent(ABC):
                     "reason": "rate_limit",
                 })
                 await asyncio.sleep(wait)
-            except APIStatusError as e:
-                if e.status_code == 529 and attempt < max_retries:
+            except api_status_errors as e:
+                status = getattr(e, 'status_code', 0)
+                if status == 529 and attempt < max_retries:
                     wait = 2 ** attempt * 3  # 3s, 6s, 12s
                     await self.emit("retry", {
                         "attempt": attempt + 1,
@@ -367,82 +437,89 @@ class BaseAgent(ABC):
         total_tokens_in = 0
         total_tokens_out = 0
 
+        # Format tool definitions via the LLM provider
+        formatted_tools = self.llm.format_tools(tool_defs)
+
         # Agentic loop: keep calling until we get a text-only response
         max_iterations = 10
         for iteration in range(max_iterations):
             await self._check_pause_cancel()
 
-            response = await self._call_with_retry(
-                lambda: self.client.messages.create(
-                    model=self.model,
-                    max_tokens=self.max_tokens,
+            llm_response = await self._call_with_retry(
+                lambda: self.llm.create_message(
                     system=sys_prompt,
                     messages=messages,
-                    tools=tool_defs,
+                    tools=formatted_tools,
+                    temperature=self.temperature,
+                    max_tokens=self.max_tokens,
                 )
             )
 
-            total_tokens_in += response.usage.input_tokens
-            total_tokens_out += response.usage.output_tokens
+            total_tokens_in += llm_response.input_tokens
+            total_tokens_out += llm_response.output_tokens
 
-            # Check if response contains tool use
-            tool_uses = [b for b in response.content if b.type == "tool_use"]
-            text_blocks = [b for b in response.content if b.type == "text"]
-
-            if not tool_uses:
+            if not llm_response.tool_calls:
                 # No tool calls — return the text
-                final_text = "\n".join(b.text for b in text_blocks)
                 duration_ms = int((time.time() - start_time) * 1000)
 
                 # Record as execution step
-                cost = self._estimate_cost(total_tokens_in, total_tokens_out)
+                cost = self.llm.estimate_cost(total_tokens_in, total_tokens_out)
                 await self._record_execution_step(
                     step_type="llm_call",
-                    description=f"Claude + {len(tools)} Tools ({total_tokens_in}in/{total_tokens_out}out)",
+                    description=f"LLM + {len(tools)} Tools ({total_tokens_in}in/{total_tokens_out}out)",
                     model=self.model,
                     tokens_in=total_tokens_in,
                     tokens_out=total_tokens_out,
-                    cost_cents=cost,
+                    cost_cents=int(cost),
                     duration_ms=duration_ms,
                 )
-                return final_text
+                return llm_response.content
 
-            # Process tool calls
-            # Add assistant message with all content blocks
-            messages.append({"role": "assistant", "content": response.content})
+            # Build assistant message with text + tool_use blocks (Anthropic format)
+            assistant_content = []
+            if llm_response.content:
+                assistant_content.append({"type": "text", "text": llm_response.content})
+            for tc in llm_response.tool_calls:
+                assistant_content.append({
+                    "type": "tool_use",
+                    "id": tc["id"],
+                    "name": tc["name"],
+                    "input": tc["input"],
+                })
+            messages.append({"role": "assistant", "content": assistant_content})
 
             tool_results = []
-            for tool_use in tool_uses:
-                tool = tool_map.get(tool_use.name)
+            for tool_call in llm_response.tool_calls:
+                tool = tool_map.get(tool_call["name"])
                 if not tool:
                     tool_results.append({
                         "type": "tool_result",
-                        "tool_use_id": tool_use.id,
-                        "content": f"Fehler: Tool '{tool_use.name}' nicht gefunden.",
+                        "tool_use_id": tool_call["id"],
+                        "content": f"Fehler: Tool '{tool_call['name']}' nicht gefunden.",
                         "is_error": True,
                     })
                     continue
 
                 # Emit SSE event for tool call
                 await self.emit("tool_call", {
-                    "tool_name": tool_use.name,
-                    "parameters": tool_use.input,
+                    "tool_name": tool_call["name"],
+                    "parameters": tool_call["input"],
                     "iteration": iteration + 1,
                 })
 
                 # Execute tool
                 tool_start = time.time()
                 try:
-                    result = await tool.execute(tool_use.input, tool_context)
+                    result = await tool.execute(tool_call["input"], tool_context)
                 except Exception as e:
-                    result = f"Fehler bei Tool-Ausfuehrung: {str(e)}"
+                    result = f"Fehler bei Tool-Ausführung: {str(e)}"
 
                 tool_duration = int((time.time() - tool_start) * 1000)
 
                 # Record tool call as execution step
                 await self._record_execution_step(
                     step_type="tool_call",
-                    description=f"Tool: {tool_use.name}",
+                    description=f"Tool: {tool_call['name']}",
                     model="",
                     tokens_in=0,
                     tokens_out=0,
@@ -459,8 +536,8 @@ class BaseAgent(ABC):
                         agent_instance_id=self.instance_id,
                         task_id=self.briefing.task_id,
                         project_id=self.briefing.project_id or None,
-                        tool_name=tool_use.name,
-                        parameters=tool_use.input,
+                        tool_name=tool_call["name"],
+                        parameters=tool_call["input"],
                         result=result,
                         duration_ms=tool_duration,
                         sequence_index=self._track_sequence_index,
@@ -470,15 +547,15 @@ class BaseAgent(ABC):
 
                 tool_results.append({
                     "type": "tool_result",
-                    "tool_use_id": tool_use.id,
+                    "tool_use_id": tool_call["id"],
                     "content": result[:10000],  # Limit tool result size
                 })
 
                 # Emit thought about tool result
                 summary = result[:200] if len(result) > 200 else result
-                await self._append_thought(f"[Tool: {tool_use.name}] {summary}")
+                await self._append_thought(f"[Tool: {tool_call['name']}] {summary}")
                 await self.emit("thought", {
-                    "text": f"[{tool_use.name}] {summary}",
+                    "text": f"[{tool_call['name']}] {summary}",
                     "timestamp": datetime.now(UTC).isoformat(),
                 })
 
@@ -521,28 +598,28 @@ class BaseAgent(ABC):
         revision_prompt = (
             f"Du hast folgenden Bericht erstellt:\n\n{previous_output[:3000]}\n\n"
             f"Der Reviewer hat folgendes Feedback gegeben:\n{feedback}\n\n"
-            f"Bitte ueberarbeite den Bericht basierend auf dem Feedback. "
+            f"Bitte überarbeite den Bericht basierend auf dem Feedback. "
             f"Behalte die Struktur bei und verbessere die genannten Punkte."
         )
 
         sys_prompt = self.system_prompt or ""
         start_time = time.time()
 
-        response = await self._call_with_retry(
-            lambda: self.client.messages.create(
-                model=self.model,
-                max_tokens=self.max_tokens,
+        llm_response = await self._call_with_retry(
+            lambda: self.llm.create_message(
                 system=sys_prompt,
                 messages=[{"role": "user", "content": revision_prompt}],
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
             )
         )
 
         duration_ms = int((time.time() - start_time) * 1000)
-        revised = "\n".join(b.text for b in response.content if b.type == "text")
+        revised = llm_response.content
 
-        tokens_in = response.usage.input_tokens
-        tokens_out = response.usage.output_tokens
-        cost = self._estimate_cost(tokens_in, tokens_out)
+        tokens_in = llm_response.input_tokens
+        tokens_out = llm_response.output_tokens
+        cost = self.llm.estimate_cost(tokens_in, tokens_out)
 
         await self._record_execution_step(
             step_type="revision",
@@ -550,7 +627,7 @@ class BaseAgent(ABC):
             model=self.model,
             tokens_in=tokens_in,
             tokens_out=tokens_out,
-            cost_cents=cost,
+            cost_cents=int(cost),
             duration_ms=duration_ms,
         )
 
@@ -566,10 +643,11 @@ class BaseAgent(ABC):
 
         return revised
 
-    @staticmethod
-    def _estimate_cost(tokens_in: int, tokens_out: int) -> int:
-        """Estimate cost in cents based on Claude Sonnet pricing."""
-        # $3/1M input, $15/1M output
+    def _estimate_cost(self, tokens_in: int, tokens_out: int) -> int:
+        """Estimate cost in cents using the LLM provider's pricing."""
+        if hasattr(self, 'llm') and self.llm:
+            return int(self.llm.estimate_cost(tokens_in, tokens_out))
+        # Fallback: Claude Sonnet pricing ($3/1M input, $15/1M output)
         return int(
             (tokens_in / 1_000_000 * 300)
             + (tokens_out / 1_000_000 * 1500)

@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import DEFAULT_USER_ID
 from app.database import async_session
 from app.models.agent import AgentInstance, AgentType
+from app.models.budget import ApiKey
 from app.models.project import Project
 from app.models.task import Task
 from app.sse.manager import sse_manager
@@ -55,6 +56,20 @@ async def start_agent(instance_id: str):
         )
         project = project_result.scalar_one_or_none()
 
+        # Load provider API key from DB (if provider is not anthropic using env var)
+        provider = getattr(agent_type, "provider", None) or "anthropic"
+        provider_api_key = None
+        if provider != "anthropic":
+            key_result = await session.execute(
+                select(ApiKey).where(
+                    ApiKey.provider == provider,
+                    ApiKey.is_active == True,
+                )
+            )
+            api_key_record = key_result.scalar_one_or_none()
+            if api_key_record:
+                provider_api_key = api_key_record.key_encrypted  # Already decrypted in simple mode
+
         # Build briefing with agent config
         briefing = TaskBriefing(
             task_id=task.id,
@@ -66,6 +81,9 @@ async def start_agent(instance_id: str):
             project_goal=project.goal or "" if project else "",
             autonomy_level=task.autonomy_level,
             agent_name=agent_type.name,
+            provider=provider,
+            provider_base_url=getattr(agent_type, "provider_base_url", None),
+            provider_api_key=provider_api_key,
             model=agent_type.model or "claude-sonnet-4-20250514",
             temperature=agent_type.temperature or 0.3,
             max_tokens=agent_type.max_tokens or 4096,
@@ -167,6 +185,20 @@ async def _revise_agent(instance_id: str, feedback: str):
         )
         project = project_result.scalar_one_or_none()
 
+        # Load provider API key from DB
+        provider = getattr(agent_type, "provider", None) or "anthropic"
+        provider_api_key = None
+        if provider != "anthropic":
+            key_result = await session.execute(
+                select(ApiKey).where(
+                    ApiKey.provider == provider,
+                    ApiKey.is_active == True,
+                )
+            )
+            api_key_record = key_result.scalar_one_or_none()
+            if api_key_record:
+                provider_api_key = api_key_record.key_encrypted
+
         briefing = TaskBriefing(
             task_id=task.id,
             task_title=task.title,
@@ -177,6 +209,9 @@ async def _revise_agent(instance_id: str, feedback: str):
             project_goal=project.goal or "" if project else "",
             autonomy_level=task.autonomy_level,
             agent_name=agent_type.name,
+            provider=provider,
+            provider_base_url=getattr(agent_type, "provider_base_url", None),
+            provider_api_key=provider_api_key,
             model=agent_type.model or "claude-sonnet-4-20250514",
             temperature=agent_type.temperature or 0.3,
             max_tokens=agent_type.max_tokens or 4096,

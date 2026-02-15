@@ -83,3 +83,4 @@
 - KEINE relativen Imports aus agents/ in backend/
 - KEIN setState im Render-Body (React: useEffect verwenden)
 - KEIN direktes `fetch("http://localhost:8000/...")` im Frontend (immer `/api/` Prefix via apiFetch)
+- KEINE ASCII-Ersetzungen für Umlaute (immer ä/ö/ü/ß, NIEMALS ae/oe/ue/ss)

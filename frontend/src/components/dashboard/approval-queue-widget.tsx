@@ -5,6 +5,7 @@ import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 import useSWR from "swr";
 import { fetcher, apiFetch } from "@/lib/api";
+import { mutateAfterApprovalAction } from "@/lib/swr-helpers";
 import type { Approval } from "@/types";
 
 export function ApprovalQueueWidget() {
@@ -24,6 +25,7 @@ export function ApprovalQueueWidget() {
         body: JSON.stringify({ status, comment: null }),
       });
       mutate();
+      mutateAfterApprovalAction();
     } catch {
       // Silently fail
     }

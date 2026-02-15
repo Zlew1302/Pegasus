@@ -10,9 +10,11 @@ interface InfoPopupProps {
   children: React.ReactNode;
   /** Anchor to position near (optional). Falls back to center screen. */
   anchorRef?: React.RefObject<HTMLElement | null>;
+  /** Use wider panel (for rich content like approval details). */
+  wide?: boolean;
 }
 
-export function InfoPopup({ open, onClose, title, children, anchorRef }: InfoPopupProps) {
+export function InfoPopup({ open, onClose, title, children, anchorRef, wide }: InfoPopupProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -51,8 +53,8 @@ export function InfoPopup({ open, onClose, title, children, anchorRef }: InfoPop
       {/* Panel */}
       <div
         ref={panelRef}
-        className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-4 shadow-2xl"
-        style={{ animation: "popup-in 150ms ease-out" }}
+        className={`fixed left-1/2 top-1/2 z-50 w-full max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-4 shadow-2xl ${wide ? "sm:max-w-2xl" : "sm:max-w-md"}`}
+        style={{ animation: "popup-in 150ms ease-out forwards", opacity: 0 }}
       >
         {/* Header */}
         <div className="mb-3 flex items-center justify-between">

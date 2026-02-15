@@ -9,19 +9,32 @@ import {
   Clock,
   Loader2,
   ChevronDown,
+  Trash2,
 } from "lucide-react";
 import { useRecentDocuments, useDocuments } from "@/hooks/use-documents";
 import { useProjects } from "@/hooks/use-projects";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { Document } from "@/types";
 
 export default function WorkspacePage() {
   const router = useRouter();
-  const { documents: recent, isLoading } = useRecentDocuments();
+  const { documents: recent, isLoading, deleteDocument } = useRecentDocuments();
   const { projects } = useProjects();
   const [showCreate, setShowCreate] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Document | null>(null);
 
   const pinned = recent.filter((d) => d.is_pinned);
   const unpinned = recent.filter((d) => !d.is_pinned);
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteDocument(deleteTarget.id);
+    } catch {
+      // silent
+    }
+    setDeleteTarget(null);
+  };
 
   return (
     <div className="h-full overflow-y-auto p-6">
@@ -59,6 +72,7 @@ export default function WorkspacePage() {
                   docs={pinned}
                   projects={projectMap(projects)}
                   onClick={(id) => router.push(`/workspace/${id}`)}
+                  onDelete={setDeleteTarget}
                 />
               </section>
             )}
@@ -75,6 +89,7 @@ export default function WorkspacePage() {
                 docs={unpinned}
                 projects={projectMap(projects)}
                 onClick={(id) => router.push(`/workspace/${id}`)}
+                onDelete={setDeleteTarget}
               />
             </section>
           </>
@@ -91,6 +106,17 @@ export default function WorkspacePage() {
             }}
           />
         )}
+
+        {/* Delete Confirmation */}
+        <ConfirmDialog
+          open={!!deleteTarget}
+          title="Dokument löschen?"
+          message={`"${deleteTarget?.title}" wird unwiderruflich gelöscht, inklusive aller Blöcke.`}
+          confirmLabel="Endgültig löschen"
+          destructive
+          onConfirm={handleDelete}
+          onCancel={() => setDeleteTarget(null)}
+        />
       </div>
     </div>
   );
@@ -121,39 +147,57 @@ function DocGrid({
   docs,
   projects,
   onClick,
+  onDelete,
 }: {
   docs: Document[];
   projects: Map<string, string>;
   onClick: (id: string) => void;
+  onDelete: (doc: Document) => void;
 }) {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {docs.map((doc) => (
-        <button
+        <div
           key={doc.id}
-          onClick={() => onClick(doc.id)}
-          className="group rounded-lg border border-border bg-card p-4 text-left transition-colors hover:border-primary/30 hover:bg-card/80"
+          className="group relative rounded-lg border border-border bg-card p-4 text-left transition-colors hover:border-primary/30 hover:bg-card/80"
         >
-          <div className="mb-2 flex items-center gap-2">
-            {doc.icon ? (
-              <span className="text-lg">{doc.icon}</span>
-            ) : (
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            )}
-            <h3 className="truncate text-sm font-medium group-hover:text-primary">
-              {doc.title}
-            </h3>
-          </div>
-          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-            <span>{projects.get(doc.project_id) ?? "Unbekannt"}</span>
-            <span>
-              {doc.block_count} {doc.block_count === 1 ? "Block" : "Bloecke"}
-            </span>
-          </div>
-          <p className="mt-1 text-[10px] text-muted-foreground/60">
-            {new Date(doc.updated_at).toLocaleString("de-DE")}
-          </p>
-        </button>
+          <button
+            onClick={() => onClick(doc.id)}
+            className="w-full text-left"
+          >
+            <div className="mb-2 flex items-center gap-2">
+              {doc.icon ? (
+                <span className="text-lg">{doc.icon}</span>
+              ) : (
+                <FileText className="h-4 w-4 text-muted-foreground" />
+              )}
+              <h3 className="truncate text-sm font-medium group-hover:text-primary">
+                {doc.title}
+              </h3>
+            </div>
+            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+              <span>{projects.get(doc.project_id) ?? "Unbekannt"}</span>
+              <span>
+                {doc.block_count} {doc.block_count === 1 ? "Block" : "Blöcke"}
+              </span>
+            </div>
+            <p className="mt-1 text-[10px] text-muted-foreground/60">
+              {new Date(doc.updated_at).toLocaleString("de-DE")}
+            </p>
+          </button>
+
+          {/* Delete button (visible on hover) */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(doc);
+            }}
+            className="absolute right-2 top-2 rounded-md p-1.5 text-muted-foreground/0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover:text-muted-foreground"
+            title="Löschen"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
       ))}
     </div>
   );
@@ -207,13 +251,13 @@ function CreateDocDialog({
             onClick={() => setDropdownOpen(!dropdownOpen)}
             className="flex w-full items-center justify-between rounded-md border border-border bg-secondary/50 px-3 py-2 text-left text-sm transition-colors hover:bg-secondary/70"
           >
-            <span>{selectedProject?.title ?? "Projekt waehlen..."}</span>
+            <span>{selectedProject?.title ?? "Projekt wählen..."}</span>
             <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${dropdownOpen ? "rotate-180" : ""}`} />
           </button>
           {dropdownOpen && (
             <div className="absolute left-0 top-full z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-border bg-card py-1 shadow-xl">
               <p className="px-2.5 py-1 text-[10px] font-medium uppercase text-muted-foreground">
-                Projekt waehlen
+                Projekt wählen
               </p>
               {projects.map((p) => (
                 <button

@@ -10,7 +10,8 @@ from app.models.user import UserProfile
 
 RESEARCH_AGENT_ID = "agent-research-001"
 PLANNING_AGENT_ID = "agent-planning-001"
-CODE_AGENT_ID = "agent-code-001"
+WRITING_AGENT_ID = "agent-writing-001"
+QA_AGENT_ID = "agent-qa-001"
 
 RESEARCH_SYSTEM_PROMPT = """Du bist ein erfahrener Research Agent im CrewBoard-System.
 Deine Aufgabe ist es, gruendliche Recherchen durchzufuehren und strukturierte Berichte zu erstellen.
@@ -26,13 +27,20 @@ Richtlinien:
 
 
 async def seed_essentials():
-    """Seed only agent types and user profile. Skips if already present."""
+    """Seed only agent types and user profile. Upserts new agents."""
     async with async_session() as session:
-        # Check if already seeded
+        # Check if already seeded (basic check)
         result = await session.execute(
             select(AgentType).where(AgentType.id == RESEARCH_AGENT_ID)
         )
-        if result.scalar_one_or_none():
+        existing = result.scalar_one_or_none()
+
+        # Ensure new agent types exist (even if old seed already ran)
+        await _ensure_new_agents(session)
+        # Remove deprecated Code Agent
+        await _remove_deprecated_agents(session)
+
+        if existing:
             return
 
         # ── Agent Types (required for agent system) ──────────────
@@ -69,17 +77,33 @@ async def seed_essentials():
         ))
 
         session.add(AgentType(
-            id=CODE_AGENT_ID,
-            name="Code Agent",
+            id=WRITING_AGENT_ID,
+            name="Writing Agent",
             avatar="bot",
-            description="Schreibt und refaktorisiert Code, erstellt Tests und dokumentiert Aenderungen.",
-            capabilities='["code_generation", "refactoring", "testing", "documentation"]',
-            tools='["read_file", "write_file", "run_tests"]',
-            system_prompt="Du bist ein erfahrener Softwareentwickler. Schreibe sauberen, getesteten Code.",
+            description="Erstellt hochwertige Texte, Dokumente und Berichte basierend auf Projekt-Kontext und Anforderungen.",
+            capabilities='["content_creation", "copywriting", "documentation", "editing"]',
+            tools='["read_project_context", "knowledge_search"]',
+            system_prompt="Du bist ein erfahrener Texter. Erstelle hochwertige, gut strukturierte Texte auf Deutsch.",
             model="claude-sonnet-4-20250514",
-            temperature=0.1,
-            max_tokens=8192,
-            max_concurrent_instances=3,
+            temperature=0.4,
+            max_tokens=4096,
+            max_concurrent_instances=5,
+            trust_level="propose",
+            is_custom=False,
+        ))
+
+        session.add(AgentType(
+            id=QA_AGENT_ID,
+            name="QA Agent",
+            avatar="bot",
+            description="Fuehrt Qualitaetssicherung durch: generiert Testfaelle, analysiert Risiken und erstellt QA-Reports.",
+            capabilities='["test_generation", "quality_assurance", "risk_analysis", "documentation"]',
+            tools='["read_project_context", "knowledge_search", "manage_task"]',
+            system_prompt="Du bist ein erfahrener QA-Spezialist. Analysiere systematisch und gruendlich.",
+            model="claude-sonnet-4-20250514",
+            temperature=0.2,
+            max_tokens=4096,
+            max_concurrent_instances=5,
             trust_level="propose",
             is_custom=False,
         ))
@@ -93,3 +117,62 @@ async def seed_essentials():
 
         await session.commit()
         print("System-Daten (Agent-Typen + Profil) eingefuegt.")
+
+
+async def _ensure_new_agents(session):
+    """Stellt sicher, dass Writing Agent und QA Agent existieren."""
+    new_agents = {
+        WRITING_AGENT_ID: {
+            "name": "Writing Agent",
+            "avatar": "bot",
+            "description": "Erstellt hochwertige Texte, Dokumente und Berichte basierend auf Projekt-Kontext und Anforderungen.",
+            "capabilities": '["content_creation", "copywriting", "documentation", "editing"]',
+            "tools": '["read_project_context", "knowledge_search"]',
+            "system_prompt": "Du bist ein erfahrener Texter. Erstelle hochwertige, gut strukturierte Texte auf Deutsch.",
+            "model": "claude-sonnet-4-20250514",
+            "temperature": 0.4,
+            "max_tokens": 4096,
+            "max_concurrent_instances": 5,
+            "trust_level": "propose",
+            "is_custom": False,
+        },
+        QA_AGENT_ID: {
+            "name": "QA Agent",
+            "avatar": "bot",
+            "description": "Fuehrt Qualitaetssicherung durch: generiert Testfaelle, analysiert Risiken und erstellt QA-Reports.",
+            "capabilities": '["test_generation", "quality_assurance", "risk_analysis", "documentation"]',
+            "tools": '["read_project_context", "knowledge_search", "manage_task"]',
+            "system_prompt": "Du bist ein erfahrener QA-Spezialist. Analysiere systematisch und gruendlich.",
+            "model": "claude-sonnet-4-20250514",
+            "temperature": 0.2,
+            "max_tokens": 4096,
+            "max_concurrent_instances": 5,
+            "trust_level": "propose",
+            "is_custom": False,
+        },
+    }
+
+    for agent_id, config in new_agents.items():
+        result = await session.execute(
+            select(AgentType).where(AgentType.id == agent_id)
+        )
+        if not result.scalar_one_or_none():
+            session.add(AgentType(id=agent_id, **config))
+            print(f"Neuer Agent-Typ '{config['name']}' eingefuegt.")
+
+    await session.commit()
+
+
+async def _remove_deprecated_agents(session):
+    """Entfernt veraltete Agent-Typen (Code Agent ohne Implementierung)."""
+    deprecated_ids = ["agent-code-001"]
+    for agent_id in deprecated_ids:
+        result = await session.execute(
+            select(AgentType).where(AgentType.id == agent_id)
+        )
+        agent = result.scalar_one_or_none()
+        if agent:
+            await session.delete(agent)
+            print(f"Veralteter Agent-Typ '{agent.name}' entfernt.")
+
+    await session.commit()

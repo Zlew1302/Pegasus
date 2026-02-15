@@ -38,7 +38,7 @@ export function WidgetWrapper({
 
   // For regular widgets: drag handle in the header area
   return (
-    <div className="group relative flex h-full flex-col rounded-lg border border-border bg-card">
+    <div className="group relative flex h-full flex-col rounded-lg border border-border bg-card transition-all duration-200 hover:shadow-lg hover:shadow-black/10">
       {/* Drag handle header */}
       <div className="drag-handle flex shrink-0 cursor-grab items-center justify-between border-b border-border/50 px-4 py-2 active:cursor-grabbing">
         <div className="flex items-center gap-2">

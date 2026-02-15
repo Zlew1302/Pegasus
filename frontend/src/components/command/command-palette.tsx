@@ -5,15 +5,18 @@ import { Command } from "cmdk";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   Bot,
+  FileText,
   FolderKanban,
   ListTodo,
+  MessageSquare,
   Plus,
   Search,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import type { SearchResults as AdvancedSearchResults, SearchResult as AdvancedSearchResult } from "@/types";
 
 interface SearchResult {
-  type: "task" | "project" | "agent_type";
+  type: "task" | "project" | "agent_type" | "document" | "comment";
   id: string;
   title: string;
   subtitle: string | null;
@@ -40,11 +43,26 @@ export function CommandPalette({
 }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [typeFilter, setTypeFilter] = useState<string | null>(null);
 
-  // Global keyboard listener
+  const TYPE_FILTERS = [
+    { key: null, label: "Alle" },
+    { key: "task", label: "Tasks" },
+    { key: "project", label: "Projekte" },
+    { key: "document", label: "Dokumente" },
+  ];
+
+  // Global keyboard listener — "/" opens command palette (Cmd+K reserved for Spotlight AI)
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+      if (
+        e.key === "/" &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !(e.target instanceof HTMLInputElement) &&
+        !(e.target instanceof HTMLTextAreaElement) &&
+        !(e.target as HTMLElement)?.isContentEditable
+      ) {
         e.preventDefault();
         onOpenChange(!open);
       }
@@ -53,47 +71,72 @@ export function CommandPalette({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open, onOpenChange]);
 
-  // Search on query change
-  const search = useCallback(async (q: string) => {
+  // Search using advanced search endpoint
+  const search = useCallback(async (q: string, type: string | null) => {
     if (!q.trim()) {
       setResults([]);
       return;
     }
     try {
-      const data = await apiFetch<SearchResult[]>(
-        `/commands/search?q=${encodeURIComponent(q)}`
+      const params = new URLSearchParams({ q, limit: "15" });
+      if (type) params.set("type", type);
+      const data = await apiFetch<AdvancedSearchResults>(
+        `/search?${params.toString()}`
       );
-      setResults(data);
+      setResults(
+        data.results.map((r: AdvancedSearchResult) => ({
+          type: r.type,
+          id: r.id,
+          title: r.title,
+          subtitle: r.snippet || r.project_name || null,
+        }))
+      );
     } catch {
-      setResults([]);
+      // Fallback to old commands endpoint
+      try {
+        const data = await apiFetch<SearchResult[]>(
+          `/commands/search?q=${encodeURIComponent(q)}`
+        );
+        setResults(data);
+      } catch {
+        setResults([]);
+      }
     }
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => search(query), 200);
+    const timer = setTimeout(() => search(query, typeFilter), 200);
     return () => clearTimeout(timer);
-  }, [query, search]);
+  }, [query, typeFilter, search]);
 
   const handleSelect = (result: SearchResult) => {
     onOpenChange(false);
     setQuery("");
+    setTypeFilter(null);
     switch (result.type) {
       case "task":
         onSelectTask(result.id);
         break;
       case "project":
+      case "document":
         onSelectProject(result.id);
         break;
       case "agent_type":
         onSpawnAgent(result.id);
         break;
+      case "comment":
+        // Comments point to their parent task
+        onSelectTask(result.id);
+        break;
     }
   };
 
-  const IconForType = {
+  const IconForType: Record<string, typeof Bot> = {
     task: ListTodo,
     project: FolderKanban,
     agent_type: Bot,
+    document: FileText,
+    comment: MessageSquare,
   };
 
   return (
@@ -115,6 +158,25 @@ export function CommandPalette({
               className="flex h-11 w-full bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground"
             />
           </div>
+
+          {/* Filter Chips */}
+          {query.trim() && (
+            <div className="flex gap-1.5 border-b border-border px-3 py-1.5">
+              {TYPE_FILTERS.map((f) => (
+                <button
+                  key={f.key ?? "all"}
+                  onClick={() => setTypeFilter(f.key)}
+                  className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
+                    typeFilter === f.key
+                      ? "bg-[hsl(var(--accent-orange))] text-white"
+                      : "bg-secondary text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          )}
 
           <Command.List className="max-h-80 overflow-y-auto p-2">
             <Command.Empty className="px-4 py-6 text-center text-sm text-muted-foreground">

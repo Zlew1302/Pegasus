@@ -12,6 +12,8 @@ class AgentTypeResponse(BaseModel):
     avatar: Optional[str]
     description: Optional[str]
     capabilities: Optional[str]
+    provider: str = "anthropic"
+    provider_base_url: Optional[str] = None
     model: str
     max_concurrent_instances: int
     trust_level: str
@@ -24,6 +26,8 @@ class AgentTypeCreateRequest(BaseModel):
     capabilities: str | None = None  # JSON array string
     tools: str | None = None  # JSON array string
     system_prompt: str | None = None
+    provider: str = "anthropic"
+    provider_base_url: str | None = None
     model: str = "claude-sonnet-4-20250514"
     temperature: float = 0.3
     max_tokens: int = 4096
@@ -38,6 +42,8 @@ class AgentTypeUpdateRequest(BaseModel):
     capabilities: str | None = None
     tools: str | None = None
     system_prompt: str | None = None
+    provider: str | None = None
+    provider_base_url: str | None = None
     model: str | None = None
     temperature: float | None = None
     max_tokens: int | None = None
@@ -80,6 +86,8 @@ class AgentInstanceResponse(BaseModel):
 class AgentInstanceWithTaskResponse(AgentInstanceResponse):
     task_title: str | None = None
     agent_type_name: str | None = None
+    project_id: str | None = None
+    project_title: str | None = None
 
 
 class AgentMessageRequest(BaseModel):

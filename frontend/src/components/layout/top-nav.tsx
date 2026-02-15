@@ -7,8 +7,9 @@ import { NotificationBell } from "./notification-bell";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/workspace", label: "Workspace", icon: Briefcase },
   { href: "/projects", label: "Projekte", icon: FolderKanban },
+  { href: "/workspace", label: "Workspace", icon: Briefcase },
+  { href: "/agents", label: "Agenten", icon: Bot },
   { href: "/profile", label: "Profil", icon: User },
 ] as const;
 

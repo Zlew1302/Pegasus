@@ -22,7 +22,7 @@ const TEXT_COLORS = [
   { label: "Grau", value: "hsl(215 16% 57%)", class: "bg-[hsl(215_16%_57%)]" },
   { label: "Orange", value: "hsl(24 95% 53%)", class: "bg-[hsl(24_95%_53%)]" },
   { label: "Gelb", value: "hsl(48 96% 53%)", class: "bg-yellow-500" },
-  { label: "Gruen", value: "hsl(142 71% 45%)", class: "bg-green-500" },
+  { label: "Grün", value: "hsl(142 71% 45%)", class: "bg-green-500" },
   { label: "Blau", value: "hsl(199 89% 48%)", class: "bg-[hsl(199_89%_48%)]" },
   { label: "Lila", value: "hsl(270 60% 60%)", class: "bg-purple-500" },
   { label: "Rot", value: "hsl(0 63% 51%)", class: "bg-red-500" },
@@ -115,7 +115,7 @@ export function FloatingToolbar({
       className="fixed z-50 flex items-center gap-0.5 rounded-lg border border-border bg-card px-1 py-0.5 shadow-2xl"
       style={{
         top: Math.max(8, position.top),
-        left: position.left,
+        left: Math.min(Math.max(160, position.left), (typeof window !== "undefined" ? window.innerWidth : 1200) - 160),
         transform: "translateX(-50%)",
       }}
       onMouseDown={(e) => e.preventDefault()} // Prevent losing selection
@@ -155,19 +155,19 @@ export function FloatingToolbar({
           />
           <ToolbarButton
             icon={Heading1}
-            title="Ueberschrift 1"
+            title="Überschrift 1"
             active={currentBlockType === "heading_1"}
             onClick={() => onBlockTypeChange("heading_1")}
           />
           <ToolbarButton
             icon={Heading2}
-            title="Ueberschrift 2"
+            title="Überschrift 2"
             active={currentBlockType === "heading_2"}
             onClick={() => onBlockTypeChange("heading_2")}
           />
           <ToolbarButton
             icon={Heading3}
-            title="Ueberschrift 3"
+            title="Überschrift 3"
             active={currentBlockType === "heading_3"}
             onClick={() => onBlockTypeChange("heading_3")}
           />
@@ -181,7 +181,7 @@ export function FloatingToolbar({
         <>
           <ToolbarButton
             icon={AlignLeft}
-            title="Linksbuendig"
+            title="Linksbündig"
             onClick={() => onAlignmentChange("left")}
           />
           <ToolbarButton
@@ -191,7 +191,7 @@ export function FloatingToolbar({
           />
           <ToolbarButton
             icon={AlignRight}
-            title="Rechtsbuendig"
+            title="Rechtsbündig"
             onClick={() => onAlignmentChange("right")}
           />
           <ToolbarButton

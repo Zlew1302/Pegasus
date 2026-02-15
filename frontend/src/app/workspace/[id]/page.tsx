@@ -50,7 +50,7 @@ export default function WorkspaceDocumentPage({
         <button
           onClick={() => updateDocument({ is_pinned: !doc.is_pinned })}
           className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-          title={doc.is_pinned ? "Loesung aufheben" : "Anpinnen"}
+          title={doc.is_pinned ? "Lösen" : "Anpinnen"}
         >
           {doc.is_pinned ? (
             <PinOff className="h-4 w-4" />

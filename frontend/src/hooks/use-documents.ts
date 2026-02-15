@@ -41,10 +41,18 @@ export function useDocuments(projectId: string | null) {
 // ── Recent documents (cross-project) ──────────────────────────
 
 export function useRecentDocuments() {
-  const { data, error } = useSWR<Document[]>("/documents/recent", fetcher);
+  const { data, error, mutate } = useSWR<Document[]>("/documents/recent", fetcher);
+
+  const deleteDocument = async (docId: string) => {
+    await apiFetch(`/documents/${docId}`, { method: "DELETE" });
+    await mutate();
+  };
+
   return {
     documents: data ?? [],
     isLoading: !data && !error,
+    deleteDocument,
+    mutate,
   };
 }
 

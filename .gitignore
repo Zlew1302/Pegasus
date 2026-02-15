@@ -12,7 +12,7 @@ venv/
 env/
 
 # Database
-*.db
+backend/data/
 *.sqlite3
 
 # Environment

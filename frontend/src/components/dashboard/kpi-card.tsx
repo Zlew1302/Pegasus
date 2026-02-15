@@ -23,8 +23,8 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
   const max = Math.max(...data);
   const range = max - min || 1;
 
-  const width = 48;
-  const height = 20;
+  const width = 100;
+  const height = 24;
   const padding = 2;
 
   const points = data
@@ -43,11 +43,12 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
 
   return (
     <svg
-      width={width}
+      width="100%"
       height={height}
       viewBox={`0 0 ${width} ${height}`}
+      preserveAspectRatio="none"
       className={color.startsWith("text-") ? color : ""}
-      style={{ opacity: 0.5 }}
+      style={{ opacity: 0.4 }}
     >
       <polyline
         points={points}
@@ -83,35 +84,44 @@ export function KpiCard({
   return (
     <div
       onClick={handleClick}
-      className={`flex h-full items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 ${
-        handleClick ? "cursor-pointer transition-colors hover:border-[hsl(var(--accent-orange))]/30" : ""
+      className={`relative flex h-full flex-col justify-between overflow-hidden rounded-lg border border-border bg-card px-3.5 py-3 transition-all duration-200 hover:border-[hsl(var(--accent-orange))]/30 hover:shadow-lg hover:shadow-black/10 hover:-translate-y-0.5 ${
+        handleClick ? "cursor-pointer" : ""
       }`}
     >
-      <Icon className={`h-4 w-4 shrink-0 ${color}`} />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-baseline gap-2">
-          <span className={`text-base font-bold leading-none ${color}`}>{value}</span>
-          {trend && (
-            <span
-              className={`inline-flex items-center gap-0.5 text-[10px] ${
-                trend.value >= 0 ? "text-green-500" : "text-red-400"
-              }`}
-            >
-              {trend.value >= 0 ? (
-                <TrendingUp className="h-2.5 w-2.5" />
-              ) : (
-                <TrendingDown className="h-2.5 w-2.5" />
-              )}
-              {trend.label}
-            </span>
-          )}
+      {/* Top: Icon + Trend */}
+      <div className="flex items-center justify-between">
+        <div className={`flex h-7 w-7 items-center justify-center rounded-lg bg-secondary/60`}>
+          <Icon className={`h-3.5 w-3.5 ${color}`} />
         </div>
-        <p className="text-[10px] leading-tight text-muted-foreground">
+        {trend && (
+          <span
+            className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+              trend.value >= 0 ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-400"
+            }`}
+          >
+            {trend.value >= 0 ? (
+              <TrendingUp className="h-2.5 w-2.5" />
+            ) : (
+              <TrendingDown className="h-2.5 w-2.5" />
+            )}
+            {trend.label}
+          </span>
+        )}
+      </div>
+
+      {/* Middle: Value */}
+      <div className="mt-2">
+        <span className={`text-2xl font-bold leading-none tracking-tight ${color}`}>{value}</span>
+        <p className="mt-1 text-[11px] leading-tight text-muted-foreground">
           {label}{subtext ? ` · ${subtext}` : ""}
         </p>
       </div>
+
+      {/* Bottom: Sparkline */}
       {sparklineData && sparklineData.length > 1 && (
-        <Sparkline data={sparklineData} color={color} />
+        <div className="mt-2">
+          <Sparkline data={sparklineData} color={color} />
+        </div>
       )}
     </div>
   );

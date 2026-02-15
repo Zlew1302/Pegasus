@@ -27,31 +27,54 @@ const TRUST_LEVELS = [
   {
     value: "propose",
     label: "Vorschlagen",
-    description: "Agent schlaegt Ergebnisse vor, Mensch genehmigt",
+    description: "Agent schlägt Ergebnisse vor, Mensch genehmigt",
     icon: Shield,
     color: "text-green-400",
   },
   {
     value: "execute",
-    label: "Ausfuehren",
-    description: "Agent fuehrt aus, Mensch wird informiert",
+    label: "Ausführen",
+    description: "Agent führt aus, Mensch wird informiert",
     icon: ShieldCheck,
     color: "text-yellow-400",
   },
   {
     value: "full_auto",
     label: "Vollautomatisch",
-    description: "Agent arbeitet komplett eigenstaendig",
+    description: "Agent arbeitet komplett eigenständig",
     icon: ShieldOff,
     color: "text-red-400",
   },
 ];
 
-const MODELS = [
-  { value: "claude-sonnet-4-20250514", label: "Claude Sonnet 4" },
-  { value: "claude-haiku-4-20250514", label: "Claude Haiku 4" },
-  { value: "claude-opus-4-20250514", label: "Claude Opus 4" },
+const PROVIDERS = [
+  { value: "anthropic", label: "Anthropic" },
+  { value: "openai", label: "OpenAI" },
+  { value: "kimi", label: "Kimi (Moonshot)" },
 ];
+
+const PROVIDER_MODELS: Record<string, { value: string; label: string }[]> = {
+  anthropic: [
+    { value: "claude-sonnet-4-20250514", label: "Claude Sonnet 4" },
+    { value: "claude-haiku-4-20250514", label: "Claude Haiku 4" },
+    { value: "claude-opus-4-20250514", label: "Claude Opus 4" },
+  ],
+  openai: [
+    { value: "gpt-4o", label: "GPT-4o" },
+    { value: "gpt-4o-mini", label: "GPT-4o Mini" },
+    { value: "o3-mini", label: "o3-mini" },
+  ],
+  kimi: [
+    { value: "kimi-k2-0711", label: "Kimi k2.5" },
+    { value: "moonshot-v1-auto", label: "Moonshot v1 Auto" },
+  ],
+};
+
+const DEFAULT_MODEL_PER_PROVIDER: Record<string, string> = {
+  anthropic: "claude-sonnet-4-20250514",
+  openai: "gpt-4o",
+  kimi: "kimi-k2-0711",
+};
 
 export function AgentCreateDialog({ open, onClose, onCreated }: AgentCreateDialogProps) {
   const { tools: availableTools } = useAvailableTools();
@@ -63,6 +86,7 @@ export function AgentCreateDialog({ open, onClose, onCreated }: AgentCreateDialo
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
+  const [provider, setProvider] = useState("anthropic");
   const [model, setModel] = useState("claude-sonnet-4-20250514");
   const [temperature, setTemperature] = useState(0.3);
   const [maxTokens, setMaxTokens] = useState(4096);
@@ -76,6 +100,7 @@ export function AgentCreateDialog({ open, onClose, onCreated }: AgentCreateDialo
     setName("");
     setDescription("");
     setSystemPrompt("");
+    setProvider("anthropic");
     setModel("claude-sonnet-4-20250514");
     setTemperature(0.3);
     setMaxTokens(4096);
@@ -113,6 +138,7 @@ export function AgentCreateDialog({ open, onClose, onCreated }: AgentCreateDialo
         name: name.trim(),
         description: description.trim() || undefined,
         system_prompt: systemPrompt.trim() || undefined,
+        provider,
         model,
         temperature,
         max_tokens: maxTokens,
@@ -236,14 +262,14 @@ export function AgentCreateDialog({ open, onClose, onCreated }: AgentCreateDialo
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-xs leading-relaxed outline-none transition-colors focus:border-[var(--agent-glow-color)]"
                 />
                 <p className="mt-1 text-[10px] text-muted-foreground/60">
-                  Hier legst du fest, wie der Agent denkt und arbeitet — seine Kernidentitaet.
+                  Hier legst du fest, wie der Agent denkt und arbeitet — seine Kernidentität.
                 </p>
               </div>
 
               <div>
                 <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                   <Target className="h-3 w-3" />
-                  Faehigkeiten (kommagetrennt)
+                  Fähigkeiten (kommagetrennt)
                 </label>
                 <input
                   type="text"
@@ -259,7 +285,32 @@ export function AgentCreateDialog({ open, onClose, onCreated }: AgentCreateDialo
           {/* Step 1: Tools & Model */}
           {step === 1 && (
             <div className="space-y-4">
-              {/* Model Selector */}
+              {/* Provider Selector */}
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                  KI-Anbieter
+                </label>
+                <div className="flex gap-2">
+                  {PROVIDERS.map((p) => (
+                    <button
+                      key={p.value}
+                      onClick={() => {
+                        setProvider(p.value);
+                        setModel(DEFAULT_MODEL_PER_PROVIDER[p.value] ?? "");
+                      }}
+                      className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-all ${
+                        provider === p.value
+                          ? "border-[var(--agent-glow-color)] bg-[var(--agent-glow-color)]/10 text-[var(--agent-glow-color)]"
+                          : "border-border bg-background text-muted-foreground hover:border-muted-foreground"
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Model Selector (depends on provider) */}
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted-foreground">
                   KI-Modell
@@ -269,12 +320,12 @@ export function AgentCreateDialog({ open, onClose, onCreated }: AgentCreateDialo
                     onClick={() => setShowModelDropdown(!showModelDropdown)}
                     className="flex w-full items-center justify-between rounded-lg border border-border bg-background px-3 py-2 text-sm transition-colors hover:border-muted-foreground"
                   >
-                    <span>{MODELS.find((m) => m.value === model)?.label ?? model}</span>
+                    <span>{(PROVIDER_MODELS[provider] ?? []).find((m) => m.value === model)?.label ?? model}</span>
                     <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                   </button>
                   {showModelDropdown && (
-                    <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded-lg border border-border bg-card shadow-xl">
-                      {MODELS.map((m) => (
+                    <div className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-lg border border-border bg-card shadow-xl">
+                      {(PROVIDER_MODELS[provider] ?? []).map((m) => (
                         <button
                           key={m.value}
                           onClick={() => {
@@ -297,7 +348,7 @@ export function AgentCreateDialog({ open, onClose, onCreated }: AgentCreateDialo
               {/* Temperature */}
               <div>
                 <label className="mb-1 flex items-center justify-between text-xs font-medium text-muted-foreground">
-                  <span>Temperatur (Kreativitaet)</span>
+                  <span>Temperatur (Kreativität)</span>
                   <span className="font-mono text-foreground">{temperature.toFixed(1)}</span>
                 </label>
                 <input
@@ -310,7 +361,7 @@ export function AgentCreateDialog({ open, onClose, onCreated }: AgentCreateDialo
                   className="w-full accent-[var(--agent-glow-color)]"
                 />
                 <div className="flex justify-between text-[10px] text-muted-foreground/60">
-                  <span>Praezise</span>
+                  <span>Präzise</span>
                   <span>Kreativ</span>
                 </div>
               </div>
@@ -340,7 +391,7 @@ export function AgentCreateDialog({ open, onClose, onCreated }: AgentCreateDialo
               <div>
                 <label className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                   <Wrench className="h-3 w-3" />
-                  Verfuegbare Tools
+                  Verfügbare Tools
                 </label>
                 {availableTools.length === 0 ? (
                   <p className="text-xs text-muted-foreground/60">Lade Tools...</p>
@@ -429,7 +480,7 @@ export function AgentCreateDialog({ open, onClose, onCreated }: AgentCreateDialo
                   <div className="flex items-center justify-between">
                     <span>Modell</span>
                     <span className="text-foreground">
-                      {MODELS.find((m) => m.value === model)?.label ?? model}
+                      {PROVIDER_MODELS[provider]?.find((m) => m.value === model)?.label ?? model}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
@@ -439,7 +490,7 @@ export function AgentCreateDialog({ open, onClose, onCreated }: AgentCreateDialo
                   <div className="flex items-center justify-between">
                     <span>Tools</span>
                     <span className="text-foreground">
-                      {selectedTools.length > 0 ? `${selectedTools.length} ausgewaehlt` : "Keine"}
+                      {selectedTools.length > 0 ? `${selectedTools.length} ausgewählt` : "Keine"}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
@@ -465,7 +516,7 @@ export function AgentCreateDialog({ open, onClose, onCreated }: AgentCreateDialo
                 onClick={() => setStep(step - 1)}
                 className="rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
               >
-                Zurueck
+                Zurück
               </button>
             )}
             {step < STEPS.length - 1 ? (

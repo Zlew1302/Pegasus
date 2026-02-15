@@ -44,7 +44,7 @@ const ACTION_LABELS: Record<string, string> = {
   WriteAction: "Schreiben",
   CreateAction: "Erstellen",
   UpdateAction: "Aktualisieren",
-  DeleteAction: "Loeschen",
+  DeleteAction: "Löschen",
   CommunicateAction: "Kommunikation",
   AssessAction: "Bewertung",
 };

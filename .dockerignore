@@ -9,9 +9,8 @@ __pycache__
 .pytest_cache
 
 # Data files
-*.db
+backend/data/
 backend/uploads/
-backend/crewboard.db
 
 # Environment
 .env

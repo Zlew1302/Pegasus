@@ -29,7 +29,7 @@ export function AuditTrail() {
           </p>
         ) : entries.length === 0 ? (
           <p className="py-4 text-center text-xs text-muted-foreground">
-            Keine Eintraege vorhanden
+            Keine Einträge vorhanden
           </p>
         ) : (
           entries.map((entry, idx) => {

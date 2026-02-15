@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, LayoutGrid, Kanban, CalendarRange, Wallet, Bot, Database, Trash2 } from "lucide-react";
+import { ArrowLeft, CalendarClock, LayoutGrid, Kanban, CalendarRange, Wallet, Bot, Database, Trash2 } from "lucide-react";
 import useSWR from "swr";
 import { apiFetch, fetcher } from "@/lib/api";
 import type { Project } from "@/types";
@@ -14,6 +14,8 @@ import { ProjectBudgetTab } from "@/components/project/project-budget-tab";
 import { ProjectAgentsTab } from "@/components/project/project-agents-tab";
 import { KnowledgeManager } from "@/components/profile/knowledge-manager";
 import { IntegrationManager } from "@/components/profile/integration-manager";
+import { ExportButton } from "@/components/project/export-button";
+import { TemplateManager } from "@/components/project/template-manager";
 
 const TABS = [
   { key: "overview", label: "Übersicht", icon: LayoutGrid },
@@ -21,6 +23,7 @@ const TABS = [
   { key: "agents", label: "Agenten", icon: Bot },
   { key: "timeline", label: "Timeline", icon: CalendarRange },
   { key: "budget", label: "Budget", icon: Wallet },
+  { key: "templates", label: "Vorlagen", icon: CalendarClock },
   { key: "knowledge", label: "Wissen", icon: Database },
 ] as const;
 
@@ -75,6 +78,7 @@ export default function ProjectDetailPage() {
               </span>
             )}
           </div>
+          <ExportButton projectId={projectId} />
           <button
             onClick={() => setConfirmDelete(true)}
             className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-400"
@@ -130,6 +134,11 @@ export default function ProjectDetailPage() {
               budgetCents={project.budget_cents}
               mutateProject={mutateProject}
             />
+          </div>
+        )}
+        {activeTab === "templates" && (
+          <div className="h-full overflow-y-auto p-4">
+            <TemplateManager projectId={projectId} />
           </div>
         )}
         {activeTab === "knowledge" && (

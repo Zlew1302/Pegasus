@@ -9,6 +9,8 @@ from app.models.approval import Approval
 from app.models.agent import AgentInstance, AgentType
 from app.models.task import Task
 from app.models.project import Project
+from app.models.execution import ExecutionStep
+from app.models.output import TaskOutput
 from app.schemas.approval import ApprovalResolve, ApprovalResponse, ApprovalWithContextResponse
 from app.services.agent_service import resume_agent_with_feedback
 
@@ -44,6 +46,7 @@ async def list_approvals_with_context(
             AgentInstance.progress_percent.label("progress_percent"),
             AgentInstance.current_step.label("current_step"),
             AgentInstance.total_steps.label("total_steps"),
+            AgentInstance.thought_log.label("thought_log"),
         )
         .join(Task, Approval.task_id == Task.id)
         .outerjoin(Project, Task.project_id == Project.id)
@@ -56,20 +59,64 @@ async def list_approvals_with_context(
 
     result = await db.execute(stmt)
     rows = result.all()
-    return [
-        ApprovalWithContextResponse(
-            **ApprovalResponse.model_validate(row[0]).model_dump(),
-            task_title=row[1],
-            project_id=row[2],
-            project_title=row[3],
-            agent_type_name=row[4],
-            agent_status=row[5],
-            progress_percent=row[6],
-            current_step=row[7],
-            total_steps=row[8],
+
+    responses = []
+    for row in rows:
+        approval_obj = row[0]
+        instance_id = approval_obj.agent_instance_id
+        task_id = approval_obj.task_id
+
+        # Fetch recent execution steps for this agent instance
+        recent_steps: list[dict] = []
+        if instance_id:
+            steps_result = await db.execute(
+                select(ExecutionStep)
+                .where(ExecutionStep.agent_instance_id == instance_id)
+                .order_by(ExecutionStep.step_number.desc())
+                .limit(5)
+            )
+            recent_steps = [
+                {
+                    "step_number": s.step_number,
+                    "step_type": s.step_type,
+                    "description": s.description,
+                    "duration_ms": s.duration_ms,
+                    "cost_cents": s.cost_cents,
+                }
+                for s in steps_result.scalars().all()
+            ]
+            recent_steps.reverse()
+
+        # Fetch latest task output
+        task_output_content: str | None = None
+        output_result = await db.execute(
+            select(TaskOutput.content)
+            .where(TaskOutput.task_id == task_id)
+            .order_by(TaskOutput.version.desc())
+            .limit(1)
         )
-        for row in rows
-    ]
+        output_row = output_result.scalar_one_or_none()
+        if output_row:
+            task_output_content = output_row[:2000] if output_row else None
+
+        responses.append(
+            ApprovalWithContextResponse(
+                **ApprovalResponse.model_validate(approval_obj).model_dump(),
+                task_title=row[1],
+                project_id=row[2],
+                project_title=row[3],
+                agent_type_name=row[4],
+                agent_status=row[5],
+                progress_percent=row[6],
+                current_step=row[7],
+                total_steps=row[8],
+                thought_log=row[9],
+                recent_steps=recent_steps,
+                task_output_content=task_output_content,
+            )
+        )
+
+    return responses
 
 
 @router.get("/{approval_id}", response_model=ApprovalResponse)

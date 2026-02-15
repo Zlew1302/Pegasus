@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import type { WidgetLayout } from "@/types";
 import { WIDGET_REGISTRY, WIDGET_MAP } from "./widget-registry";
 
-const STORAGE_KEY = "crewboard-dashboard-v2";
+const STORAGE_KEY = "crewboard-dashboard-v4";
 
 interface DashboardLayoutState {
   layout: WidgetLayout[];
@@ -17,23 +17,23 @@ function buildDefaultLayout(): DashboardLayoutState {
     (w) => w.id
   );
 
-  // Arrange default-visible widgets in the 12-column grid
+  // Arrange default-visible widgets in the 12-column grid (rowHeight=70)
   const layout: WidgetLayout[] = [
-    // Row 0: KPI cards (compact — 1 row unit)
-    { i: "kpi-agents", x: 0, y: 0, w: 3, h: 1, minW: 2, minH: 1, maxW: 4, maxH: 1 },
-    { i: "kpi-tasks", x: 3, y: 0, w: 3, h: 1, minW: 2, minH: 1, maxW: 4, maxH: 1 },
-    { i: "kpi-cost", x: 6, y: 0, w: 3, h: 1, minW: 2, minH: 1, maxW: 4, maxH: 1 },
-    { i: "kpi-pending", x: 9, y: 0, w: 3, h: 1, minW: 2, minH: 1, maxW: 4, maxH: 1 },
-    // Row 1: Charts
-    { i: "chart-costs", x: 0, y: 1, w: 6, h: 3, minW: 4, minH: 3, maxW: 12, maxH: 5 },
-    { i: "chart-productivity", x: 6, y: 1, w: 6, h: 3, minW: 4, minH: 3, maxW: 12, maxH: 5 },
-    // Row 4: Feeds + Actions
-    { i: "activity", x: 0, y: 4, w: 4, h: 3, minW: 3, minH: 2, maxW: 8, maxH: 6 },
-    { i: "todos", x: 4, y: 4, w: 4, h: 3, minW: 3, minH: 2, maxW: 8, maxH: 6 },
-    { i: "agents", x: 8, y: 4, w: 4, h: 3, minW: 3, minH: 2, maxW: 8, maxH: 6 },
-    // Row 7: Approvals + Projects
-    { i: "approvals", x: 0, y: 7, w: 6, h: 3, minW: 4, minH: 2, maxW: 12, maxH: 5 },
-    { i: "projects", x: 6, y: 7, w: 6, h: 3, minW: 4, minH: 2, maxW: 12, maxH: 6 },
+    // Row 0: KPI cards (2 row units = 140px — fits vertical layout with sparkline)
+    { i: "kpi-agents", x: 0, y: 0, w: 3, h: 2, minW: 2, minH: 2, maxW: 4, maxH: 2 },
+    { i: "kpi-tasks", x: 3, y: 0, w: 3, h: 2, minW: 2, minH: 2, maxW: 4, maxH: 2 },
+    { i: "kpi-cost", x: 6, y: 0, w: 3, h: 2, minW: 2, minH: 2, maxW: 4, maxH: 2 },
+    { i: "kpi-pending", x: 9, y: 0, w: 3, h: 2, minW: 2, minH: 2, maxW: 4, maxH: 2 },
+    // Row 2: Charts (4 units = 280px)
+    { i: "chart-costs", x: 0, y: 2, w: 6, h: 4, minW: 4, minH: 3, maxW: 12, maxH: 8 },
+    { i: "chart-productivity", x: 6, y: 2, w: 6, h: 4, minW: 4, minH: 3, maxW: 12, maxH: 8 },
+    // Row 6: Activity + Approvals + Agents — 3 equal columns
+    { i: "activity", x: 0, y: 6, w: 4, h: 4, minW: 3, minH: 3, maxW: 8, maxH: 10 },
+    { i: "approvals", x: 4, y: 6, w: 4, h: 4, minW: 3, minH: 3, maxW: 8, maxH: 8 },
+    { i: "agents", x: 8, y: 6, w: 4, h: 4, minW: 3, minH: 3, maxW: 8, maxH: 10 },
+    // Row 10: Projects + Todos — 2 equal columns
+    { i: "projects", x: 0, y: 10, w: 6, h: 4, minW: 4, minH: 3, maxW: 12, maxH: 10 },
+    { i: "todos", x: 6, y: 10, w: 6, h: 4, minW: 3, minH: 3, maxW: 8, maxH: 10 },
   ];
 
   return { layout, visibleWidgets };

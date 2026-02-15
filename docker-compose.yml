@@ -6,8 +6,8 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - db-data:/app/data
-      - uploads:/app/uploads
+      - ./backend/data:/app/data
+      - ./backend/uploads:/app/uploads
     environment:
       - DATABASE_URL=sqlite+aiosqlite:///./data/crewboard.db
       - CORS_ORIGINS=["http://localhost:3000"]
@@ -32,7 +32,3 @@ services:
       backend:
         condition: service_healthy
     restart: unless-stopped
-
-volumes:
-  db-data:
-  uploads:

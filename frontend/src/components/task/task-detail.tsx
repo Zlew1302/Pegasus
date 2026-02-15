@@ -18,6 +18,10 @@ import { TaskOutput } from "./task-output";
 import { TaskComments } from "./task-comments";
 import { TaskDependencies } from "./task-dependencies";
 import { TaskSubtasks } from "./task-subtasks";
+import { TaskActivityStream } from "./task-activity-stream";
+import { TaskAttachments } from "./task-attachments";
+import { TaskTimer } from "./task-timer";
+import { TaskTimeLog } from "./task-time-log";
 import { ApprovalBanner } from "@/components/approval/approval-banner";
 import type { Task, TaskOutput as TaskOutputType, Approval } from "@/types";
 import { PRIORITY_CONFIG, COLUMNS } from "@/types";
@@ -126,6 +130,9 @@ export function TaskDetail({
         )}
       </div>
 
+      {/* Time Tracking */}
+      <TaskTimer taskId={task.id} />
+
       {/* Dependencies */}
       <TaskDependencies taskId={task.id} projectId={projectId} />
 
@@ -178,6 +185,9 @@ export function TaskDetail({
         </div>
       )}
 
+      {/* Attachments */}
+      <TaskAttachments taskId={task.id} />
+
       {/* Outputs */}
       {outputs.length > 0 && (
         <div>
@@ -193,9 +203,21 @@ export function TaskDetail({
         </div>
       )}
 
+      {/* Time Log */}
+      <TaskTimeLog taskId={task.id} />
+
       {/* Comments */}
       <Separator />
       <TaskComments taskId={task.id} />
+
+      {/* Activity Stream */}
+      <Separator />
+      <div>
+        <h3 className="mb-2 text-xs font-medium uppercase text-muted-foreground">
+          Aktivität
+        </h3>
+        <TaskActivityStream taskId={task.id} />
+      </div>
 
       {/* Spawn Dialog */}
       <AgentSpawnDialog

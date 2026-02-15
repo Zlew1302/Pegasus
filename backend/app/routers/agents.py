@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.agent import AgentInstance, AgentType
 from app.models.task import Task
+from app.models.project import Project
 from app.models.execution import ExecutionStep
 from app.schemas.agent import (
     AgentInstanceResponse,
@@ -61,6 +62,8 @@ async def create_agent_type(
         max_concurrent_instances=data.max_concurrent_instances,
         trust_level=data.trust_level,
         context_scope=data.context_scope,
+        provider=data.provider,
+        provider_base_url=data.provider_base_url,
         is_custom=True,
     )
     db.add(agent_type)
@@ -92,20 +95,20 @@ async def update_agent_type(
 
 @router.delete("/types/{type_id}", status_code=204)
 async def delete_agent_type(type_id: str, db: AsyncSession = Depends(get_db)):
-    """Benutzerdefinierten Agent-Typ loeschen."""
+    """Benutzerdefinierten Agent-Typ löschen."""
     result = await db.execute(select(AgentType).where(AgentType.id == type_id))
     agent_type = result.scalar_one_or_none()
     if not agent_type:
         raise HTTPException(status_code=404, detail="Agent-Typ nicht gefunden")
     if not agent_type.is_custom:
-        raise HTTPException(status_code=403, detail="Eingebaute Agenten koennen nicht geloescht werden")
+        raise HTTPException(status_code=403, detail="Eingebaute Agenten können nicht gelöscht werden")
     await db.delete(agent_type)
     await db.commit()
 
 
 @router.get("/tools/available", response_model=list[dict])
 async def list_available_tools():
-    """Alle verfuegbaren Tools auflisten (fuer Agent-Konfigurator)."""
+    """Alle verfügbaren Tools auflisten (für Agent-Konfigurator)."""
     from agents.tools.registry import TOOL_REGISTRY
     return [
         {
@@ -113,6 +116,21 @@ async def list_available_tools():
             "description": tool.description,
         }
         for tool in TOOL_REGISTRY.values()
+    ]
+
+
+@router.get("/providers", response_model=list[dict])
+async def list_providers():
+    """Verfügbare LLM-Provider und deren Modelle auflisten."""
+    from agents.llm.factory import PROVIDER_REGISTRY, DEFAULT_MODELS, PROVIDER_MODELS
+    return [
+        {
+            "id": provider_id,
+            "name": provider_id.capitalize(),
+            "default_model": DEFAULT_MODELS.get(provider_id, ""),
+            "models": PROVIDER_MODELS.get(provider_id, []),
+        }
+        for provider_id in PROVIDER_REGISTRY
     ]
 
 
@@ -190,9 +208,12 @@ async def list_agent_instances(
             AgentInstance,
             Task.title.label("task_title"),
             AgentType.name.label("agent_type_name"),
+            Task.project_id.label("project_id"),
+            Project.title.label("project_title"),
         )
         .join(Task, AgentInstance.task_id == Task.id)
         .outerjoin(AgentType, AgentInstance.agent_type_id == AgentType.id)
+        .outerjoin(Project, Task.project_id == Project.id)
     )
 
     if project_id:
@@ -210,6 +231,8 @@ async def list_agent_instances(
             **AgentInstanceResponse.model_validate(row[0]).model_dump(),
             task_title=row[1],
             agent_type_name=row[2],
+            project_id=row[3],
+            project_title=row[4],
         )
         for row in rows
     ]
@@ -235,7 +258,7 @@ async def pause_agent(instance_id: str, db: AsyncSession = Depends(get_db)):
     if not instance:
         raise HTTPException(status_code=404, detail="Agent-Instanz nicht gefunden")
     if instance.status != "running":
-        raise HTTPException(status_code=422, detail="Agent laeuft nicht")
+        raise HTTPException(status_code=422, detail="Agent läuft nicht")
     instance.status = "paused"
     agent = get_running_agent(instance_id)
     if agent:
@@ -282,6 +305,56 @@ async def cancel_agent(instance_id: str, db: AsyncSession = Depends(get_db)):
     await db.commit()
     await db.refresh(instance)
     return AgentInstanceResponse.model_validate(instance)
+
+
+@router.post("/instances/{instance_id}/restart", response_model=AgentInstanceResponse, status_code=201)
+async def restart_agent(instance_id: str, db: AsyncSession = Depends(get_db)):
+    """Beendeten Agent neu starten (erstellt neue Instanz mit gleicher Konfiguration)."""
+    # Check API key
+    if not settings.ANTHROPIC_API_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="ANTHROPIC_API_KEY nicht konfiguriert. Bitte in .env eintragen.",
+        )
+
+    result = await db.execute(
+        select(AgentInstance).where(AgentInstance.id == instance_id)
+    )
+    old_instance = result.scalar_one_or_none()
+    if not old_instance:
+        raise HTTPException(status_code=404, detail="Agent-Instanz nicht gefunden")
+    if old_instance.status not in ("completed", "failed", "cancelled"):
+        raise HTTPException(
+            status_code=422,
+            detail="Nur beendete Agenten können neu gestartet werden",
+        )
+
+    # Verify task still exists
+    task_result = await db.execute(select(Task).where(Task.id == old_instance.task_id))
+    task = task_result.scalar_one_or_none()
+    if not task:
+        raise HTTPException(status_code=404, detail="Zugehöriger Task nicht gefunden")
+
+    # Create new instance
+    new_instance = AgentInstance(
+        id=str(uuid4()),
+        agent_type_id=old_instance.agent_type_id,
+        task_id=old_instance.task_id,
+        status="initializing",
+        started_at=datetime.now(UTC),
+    )
+    db.add(new_instance)
+
+    # Reset task status
+    task.status = "in_progress"
+
+    await db.commit()
+    await db.refresh(new_instance)
+
+    # Launch agent as background task
+    launch_agent_task(new_instance.id)
+
+    return AgentInstanceResponse.model_validate(new_instance)
 
 
 @router.post("/instances/{instance_id}/message", response_model=AgentInstanceResponse)

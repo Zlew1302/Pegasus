@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { MessageSquareWarning, Bot, Clock, CheckCircle2 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
-import { de } from "date-fns/locale";
+import { MessageSquareWarning, CheckCircle2 } from "lucide-react";
 import useSWR from "swr";
-import { fetcher } from "@/lib/api";
+import { apiFetch, fetcher } from "@/lib/api";
+import { mutateAfterApprovalAction } from "@/lib/swr-helpers";
 import { InfoPopup } from "./info-popup";
+import { ApprovalDetail } from "@/components/approval/approval-detail";
 import type { ApprovalWithContext } from "@/types";
 
 interface PendingInputWidgetProps {
@@ -19,25 +19,20 @@ export function PendingInputWidget({ count }: PendingInputWidgetProps) {
   return (
     <>
       <div
-        className="flex h-full cursor-pointer flex-col justify-between rounded-lg border border-border bg-card p-3 transition-colors hover:border-yellow-500/50"
+        className="flex h-full cursor-pointer items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 transition-colors hover:border-yellow-500/50"
         onClick={() => setPopupOpen(true)}
       >
-        <div className="flex items-center justify-between">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            Offene Eingaben
-          </span>
-          <MessageSquareWarning className="h-3.5 w-3.5 text-yellow-500" />
-        </div>
-        <div>
-          <span className={`text-lg font-bold leading-tight ${count > 0 ? "text-yellow-500" : "text-foreground"}`}>
+        <MessageSquareWarning className="h-4 w-4 shrink-0 text-yellow-500" />
+        <div className="min-w-0 flex-1">
+          <span className={`text-base font-bold leading-none ${count > 0 ? "text-yellow-500" : "text-foreground"}`}>
             {count}
           </span>
-          <p className="text-[11px] leading-tight text-muted-foreground">
+          <p className="text-[10px] leading-tight text-muted-foreground">
             {count === 0
               ? "Keine offenen Genehmigungen"
               : count === 1
-                ? "Genehmigung wartet"
-                : "Genehmigungen warten"}
+                ? "Offene Eingaben · Genehmigung wartet"
+                : `Offene Eingaben · ${count} warten`}
           </p>
         </div>
       </div>
@@ -48,13 +43,26 @@ export function PendingInputWidget({ count }: PendingInputWidgetProps) {
 }
 
 function PendingInputPopup({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { data: approvals } = useSWR<ApprovalWithContext[]>(
+  const { data: approvals, mutate } = useSWR<ApprovalWithContext[]>(
     open ? "/approvals/with-context?status=pending" : null,
     fetcher
   );
 
+  const handleResolve = async (approvalId: string, status: string, comment?: string) => {
+    try {
+      await apiFetch(`/approvals/${approvalId}/resolve`, {
+        method: "POST",
+        body: JSON.stringify({ status, comment }),
+      });
+      await mutate();
+      mutateAfterApprovalAction();
+    } catch {
+      // silent
+    }
+  };
+
   return (
-    <InfoPopup open={open} onClose={onClose} title="Offene Genehmigungen">
+    <InfoPopup open={open} onClose={onClose} title="Offene Genehmigungen" wide>
       {!approvals || approvals.length === 0 ? (
         <div className="flex flex-col items-center gap-2 py-6 text-center">
           <CheckCircle2 className="h-8 w-8 text-green-500/30" />
@@ -63,60 +71,13 @@ function PendingInputPopup({ open, onClose }: { open: boolean; onClose: () => vo
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-4">
           {approvals.map((a) => (
-            <div
+            <ApprovalDetail
               key={a.id}
-              className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3"
-            >
-              <p className="text-xs font-medium text-yellow-400">
-                {a.description || a.type}
-              </p>
-
-              <div className="mt-2 space-y-1 text-[11px] text-muted-foreground">
-                {a.agent_type_name && (
-                  <div className="flex items-center gap-2">
-                    <Bot className="h-3 w-3 text-[var(--agent-glow-color)]" />
-                    <span>Agent: <span className="text-foreground">{a.agent_type_name}</span></span>
-                  </div>
-                )}
-                {a.task_title && (
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-3 w-3" />
-                    <span>Aufgabe: <span className="text-foreground">{a.task_title}</span></span>
-                  </div>
-                )}
-                {a.project_title && (
-                  <div className="flex items-center gap-2">
-                    <span className="ml-0.5 h-2 w-2 rounded-sm bg-[hsl(var(--accent-orange))]" />
-                    <span>Projekt: <span className="text-foreground">{a.project_title}</span></span>
-                  </div>
-                )}
-              </div>
-
-              {typeof a.progress_percent === "number" && (
-                <div className="mt-2">
-                  <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                    <span>{a.current_step ? `Schritt: ${a.current_step}` : "Fortschritt"}</span>
-                    <span>{a.progress_percent}%</span>
-                  </div>
-                  <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full bg-yellow-500 transition-all"
-                      style={{ width: `${a.progress_percent}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              <p className="mt-2 text-[10px] text-muted-foreground/60">
-                Angefragt{" "}
-                {formatDistanceToNow(new Date(a.requested_at), {
-                  locale: de,
-                  addSuffix: true,
-                })}
-              </p>
-            </div>
+              approval={a}
+              onResolve={handleResolve}
+            />
           ))}
         </div>
       )}

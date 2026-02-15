@@ -249,14 +249,14 @@ function DashboardGrid() {
           <GridLayout
             layout={activeLayout}
             cols={12}
-            rowHeight={80}
+            rowHeight={70}
             width={containerWidth - 32}
             onLayoutChange={handleLayoutChange}
             draggableHandle=".drag-handle"
             compactType="vertical"
             preventCollision={false}
             isResizable={true}
-            margin={[12, 12] as [number, number]}
+            margin={[10, 10] as [number, number]}
           >
             {visibleWidgets.map((id) => (
               <div key={id}>{renderWidget(id)}</div>

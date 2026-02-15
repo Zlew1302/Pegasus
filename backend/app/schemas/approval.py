@@ -34,3 +34,6 @@ class ApprovalWithContextResponse(ApprovalResponse):
     progress_percent: int | None = None
     current_step: str | None = None
     total_steps: int | None = None
+    thought_log: str | None = None
+    recent_steps: list[dict] = []
+    task_output_content: str | None = None

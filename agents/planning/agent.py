@@ -105,10 +105,15 @@ class PlanningAgent(BaseAgent):
         return report
 
     async def _call_claude(self, user_message: str, system: str | None = None) -> str:
-        """Simple Claude call with streaming for non-tool steps."""
+        """Call LLM with streaming (Anthropic) or fallback (other providers)."""
         await self._check_pause_cancel()
 
         sys_prompt = system or self.system_prompt or PLANNING_SYSTEM_PROMPT
+
+        # Non-Anthropic providers: use universal non-streaming call
+        if not self.client:
+            return await self._call_llm_simple(user_message, system=sys_prompt)
+
         start_time = time.time()
         accumulated = ""
         last_emit_len = 0
@@ -140,7 +145,7 @@ class PlanningAgent(BaseAgent):
 
         await self._record_execution_step(
             step_type="llm_call",
-            description=f"Claude API Call ({tokens_in}in/{tokens_out}out)",
+            description=f"LLM Call ({tokens_in}in/{tokens_out}out)",
             model=self.model,
             tokens_in=tokens_in,
             tokens_out=tokens_out,

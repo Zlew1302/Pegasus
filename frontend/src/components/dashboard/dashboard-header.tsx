@@ -7,8 +7,10 @@ import { de } from "date-fns/locale";
 import useSWR from "swr";
 import { useDashboardStats } from "@/hooks/use-dashboard";
 import { useProfile } from "@/hooks/use-profile";
-import { fetcher } from "@/lib/api";
+import { fetcher, apiFetch } from "@/lib/api";
+import { mutateAfterApprovalAction } from "@/lib/swr-helpers";
 import { InfoPopup } from "./info-popup";
+import { ApprovalDetail } from "@/components/approval/approval-detail";
 import type { ApprovalWithContext, AgentInstance } from "@/types";
 
 interface DashboardHeaderProps {
@@ -82,12 +84,12 @@ export function DashboardHeader({ onOpenPicker, onReset }: DashboardHeaderProps)
               className="flex items-center gap-1.5 rounded-md border border-border bg-secondary/50 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
             >
               <LayoutGrid className="h-3.5 w-3.5" />
-              Widget hinzufuegen
+              Widget hinzufügen
             </button>
             <button
               onClick={onReset}
               className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-              title="Layout zuruecksetzen"
+              title="Layout zurücksetzen"
             >
               <RotateCcw className="h-3.5 w-3.5" />
             </button>
@@ -168,13 +170,26 @@ function AgentPopup({ open, onClose }: { open: boolean; onClose: () => void }) {
 // ── Approval Popup ─────────────────────────────────────────────
 
 function ApprovalPopup({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { data: approvals } = useSWR<ApprovalWithContext[]>(
+  const { data: approvals, mutate } = useSWR<ApprovalWithContext[]>(
     open ? "/approvals/with-context?status=pending" : null,
     fetcher
   );
 
+  const handleResolve = async (approvalId: string, status: string, comment?: string) => {
+    try {
+      await apiFetch(`/approvals/${approvalId}/resolve`, {
+        method: "POST",
+        body: JSON.stringify({ status, comment }),
+      });
+      await mutate();
+      mutateAfterApprovalAction();
+    } catch {
+      // silent
+    }
+  };
+
   return (
-    <InfoPopup open={open} onClose={onClose} title="Offene Genehmigungen">
+    <InfoPopup open={open} onClose={onClose} title="Offene Genehmigungen" wide>
       {!approvals || approvals.length === 0 ? (
         <div className="flex flex-col items-center gap-2 py-6 text-center">
           <CheckCircle2 className="h-8 w-8 text-green-500/30" />
@@ -183,75 +198,17 @@ function ApprovalPopup({ open, onClose }: { open: boolean; onClose: () => void }
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-4">
           {approvals.map((a) => (
-            <ApprovalCard key={a.id} approval={a} />
+            <ApprovalDetail
+              key={a.id}
+              approval={a}
+              onResolve={handleResolve}
+            />
           ))}
         </div>
       )}
     </InfoPopup>
-  );
-}
-
-function ApprovalCard({ approval }: { approval: ApprovalWithContext }) {
-  return (
-    <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
-      {/* What does the agent need? */}
-      <p className="text-xs font-medium text-yellow-400">
-        {approval.description || approval.type}
-      </p>
-
-      {/* Context */}
-      <div className="mt-2 space-y-1 text-[11px] text-muted-foreground">
-        {approval.agent_type_name && (
-          <div className="flex items-center gap-2">
-            <Bot className="h-3 w-3 text-[var(--agent-glow-color)]" />
-            <span>Agent: <span className="text-foreground">{approval.agent_type_name}</span></span>
-          </div>
-        )}
-        {approval.task_title && (
-          <div className="flex items-center gap-2">
-            <Clock className="h-3 w-3" />
-            <span>Aufgabe: <span className="text-foreground">{approval.task_title}</span></span>
-          </div>
-        )}
-        {approval.project_title && (
-          <div className="flex items-center gap-2">
-            <span className="ml-0.5 h-2 w-2 rounded-sm bg-[hsl(var(--accent-orange))]" />
-            <span>Projekt: <span className="text-foreground">{approval.project_title}</span></span>
-          </div>
-        )}
-      </div>
-
-      {/* Progress */}
-      {typeof approval.progress_percent === "number" && (
-        <div className="mt-2">
-          <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-            <span>
-              {approval.current_step
-                ? `Schritt: ${approval.current_step}`
-                : "Fortschritt"}
-            </span>
-            <span>{approval.progress_percent}%</span>
-          </div>
-          <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-yellow-500 transition-all"
-              style={{ width: `${approval.progress_percent}%` }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Time */}
-      <p className="mt-2 text-[10px] text-muted-foreground/60">
-        Angefragt{" "}
-        {formatDistanceToNow(new Date(approval.requested_at), {
-          locale: de,
-          addSuffix: true,
-        })}
-      </p>
-    </div>
   );
 }
 

@@ -74,6 +74,8 @@ export interface AgentType {
   avatar: string | null;
   description: string | null;
   capabilities: string | null;
+  provider: string;
+  provider_base_url: string | null;
   model: string;
   max_concurrent_instances: number;
   trust_level: string;
@@ -92,6 +94,8 @@ export interface AgentTypeCreateInput {
   capabilities?: string;
   tools?: string;
   system_prompt?: string;
+  provider?: string;
+  provider_base_url?: string;
   model?: string;
   temperature?: number;
   max_tokens?: number;
@@ -123,6 +127,8 @@ export interface AgentInstance {
 export interface AgentInstanceWithTask extends AgentInstance {
   task_title: string | null;
   agent_type_name: string | null;
+  project_id: string | null;
+  project_title: string | null;
 }
 
 export interface ExecutionStep {
@@ -186,6 +192,9 @@ export interface ApprovalWithContext extends Approval {
   progress_percent: number | null;
   current_step: string | null;
   total_steps: number | null;
+  thought_log: string | null;
+  recent_steps: { step_number: number; step_type: string; description: string | null; duration_ms: number | null; cost_cents: number | null }[];
+  task_output_content: string | null;
 }
 
 export interface TaskHistory {
@@ -197,6 +206,111 @@ export interface TaskHistory {
   old_value: string | null;
   new_value: string | null;
   changed_at: string;
+}
+
+// --- Activity Stream Types ---
+
+export interface TaskActivityEntry {
+  id: string;
+  type: "status_change" | "field_change" | "comment" | "output" | "approval_requested" | "approval_resolved" | "agent_step";
+  timestamp: string;
+  actor_type: string;
+  actor_name: string | null;
+  summary: string;
+  details: string | null;
+  field_name: string | null;
+  old_value: string | null;
+  new_value: string | null;
+  content: string | null;
+  version: number | null;
+  approval_status: string | null;
+  step_type: string | null;
+  tokens_in: number | null;
+  tokens_out: number | null;
+  cost_cents: number | null;
+}
+
+// --- Task Attachment Types ---
+
+export interface TaskAttachment {
+  id: string;
+  task_id: string;
+  filename: string;
+  original_filename: string;
+  file_size_bytes: number;
+  mime_type: string;
+  uploaded_by: string;
+  created_at: string;
+}
+
+// --- Time Tracking Types ---
+
+export interface TimeEntry {
+  id: string;
+  task_id: string;
+  user_id: string;
+  started_at: string;
+  ended_at: string | null;
+  duration_minutes: number;
+  note: string | null;
+  is_running: boolean;
+  created_at: string;
+}
+
+// --- Webhook Types ---
+
+export interface Webhook {
+  id: string;
+  name: string;
+  url: string;
+  events: string;
+  secret: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface WebhookDelivery {
+  id: string;
+  webhook_id: string;
+  event_type: string;
+  status_code: number | null;
+  error_message: string | null;
+  attempt: number;
+  created_at: string;
+}
+
+// --- Search Types ---
+
+export interface SearchResult {
+  type: "task" | "project" | "document" | "comment";
+  id: string;
+  title: string;
+  snippet: string | null;
+  project_name: string | null;
+  status: string | null;
+  score: number;
+}
+
+export interface SearchResults {
+  results: SearchResult[];
+  total: number;
+  query: string;
+}
+
+// --- Task Template Types ---
+
+export interface TaskTemplate {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string | null;
+  priority: string;
+  recurrence_type: string | null;
+  recurrence_interval: number;
+  recurrence_day: number | null;
+  next_run_at: string | null;
+  is_active: boolean;
+  created_at: string;
 }
 
 // --- Dependency Types ---

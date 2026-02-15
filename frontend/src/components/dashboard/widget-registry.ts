@@ -26,7 +26,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     description: "Anzahl aktuell laufender KI-Agenten",
     icon: "Bot",
     category: "kpi",
-    defaultLayout: { w: 3, h: 1, minW: 2, minH: 1, maxW: 4, maxH: 1 },
+    defaultLayout: { w: 3, h: 2, minW: 2, minH: 2, maxW: 4, maxH: 2 },
     defaultVisible: true,
   },
   {
@@ -35,7 +35,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     description: "Erledigte Tasks der aktuellen Woche",
     icon: "CheckCircle2",
     category: "kpi",
-    defaultLayout: { w: 3, h: 1, minW: 2, minH: 1, maxW: 4, maxH: 1 },
+    defaultLayout: { w: 3, h: 2, minW: 2, minH: 2, maxW: 4, maxH: 2 },
     defaultVisible: true,
   },
   {
@@ -44,7 +44,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     description: "Token-Ausgaben der letzten 7 Tage",
     icon: "Wallet",
     category: "kpi",
-    defaultLayout: { w: 3, h: 1, minW: 2, minH: 1, maxW: 4, maxH: 1 },
+    defaultLayout: { w: 3, h: 2, minW: 2, minH: 2, maxW: 4, maxH: 2 },
     defaultVisible: true,
   },
   {
@@ -53,7 +53,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     description: "Genehmigungen die auf Eingabe warten",
     icon: "MessageSquareWarning",
     category: "kpi",
-    defaultLayout: { w: 3, h: 1, minW: 2, minH: 1, maxW: 4, maxH: 1 },
+    defaultLayout: { w: 3, h: 2, minW: 2, minH: 2, maxW: 4, maxH: 2 },
     defaultVisible: true,
   },
 
@@ -64,7 +64,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     description: "Kostenverlauf als Diagramm",
     icon: "TrendingUp",
     category: "chart",
-    defaultLayout: { w: 6, h: 3, minW: 4, minH: 3, maxW: 12, maxH: 5 },
+    defaultLayout: { w: 6, h: 5, minW: 4, minH: 4, maxW: 12, maxH: 8 },
     defaultVisible: true,
   },
   {
@@ -73,7 +73,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     description: "Erledigte Tasks pro Tag als Diagramm",
     icon: "BarChart3",
     category: "chart",
-    defaultLayout: { w: 6, h: 3, minW: 4, minH: 3, maxW: 12, maxH: 5 },
+    defaultLayout: { w: 6, h: 5, minW: 4, minH: 4, maxW: 12, maxH: 8 },
     defaultVisible: true,
   },
 
@@ -84,7 +84,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     description: "Echtzeit-Feed laufender Agenten",
     icon: "Activity",
     category: "feed",
-    defaultLayout: { w: 4, h: 3, minW: 3, minH: 2, maxW: 8, maxH: 6 },
+    defaultLayout: { w: 4, h: 5, minW: 3, minH: 3, maxW: 8, maxH: 10 },
     defaultVisible: true,
   },
   {
@@ -93,7 +93,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     description: "Aktuelle Benachrichtigungen und Hinweise",
     icon: "Bell",
     category: "feed",
-    defaultLayout: { w: 4, h: 3, minW: 3, minH: 2, maxW: 8, maxH: 6 },
+    defaultLayout: { w: 4, h: 5, minW: 3, minH: 3, maxW: 8, maxH: 10 },
     defaultVisible: false,
   },
 
@@ -104,7 +104,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     description: "Persönliche To-Do-Liste",
     icon: "ListTodo",
     category: "action",
-    defaultLayout: { w: 4, h: 3, minW: 3, minH: 2, maxW: 8, maxH: 6 },
+    defaultLayout: { w: 4, h: 5, minW: 3, minH: 3, maxW: 8, maxH: 10 },
     defaultVisible: true,
   },
   {
@@ -113,7 +113,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     description: "Verfügbare Agent-Typen starten",
     icon: "Zap",
     category: "action",
-    defaultLayout: { w: 4, h: 3, minW: 3, minH: 2, maxW: 8, maxH: 6 },
+    defaultLayout: { w: 4, h: 5, minW: 3, minH: 3, maxW: 8, maxH: 10 },
     defaultVisible: true,
   },
   {
@@ -122,7 +122,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     description: "Offene Genehmigungsanfragen bearbeiten",
     icon: "ShieldCheck",
     category: "action",
-    defaultLayout: { w: 6, h: 3, minW: 4, minH: 2, maxW: 12, maxH: 5 },
+    defaultLayout: { w: 6, h: 5, minW: 4, minH: 3, maxW: 12, maxH: 8 },
     defaultVisible: true,
   },
   {
@@ -131,7 +131,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     description: "Häufige Aktionen als Buttons",
     icon: "Rocket",
     category: "action",
-    defaultLayout: { w: 3, h: 2, minW: 3, minH: 2, maxW: 6, maxH: 3 },
+    defaultLayout: { w: 3, h: 3, minW: 3, minH: 3, maxW: 6, maxH: 5 },
     defaultVisible: false,
   },
 
@@ -142,7 +142,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     description: "Übersicht aller Projekte mit Status",
     icon: "FolderKanban",
     category: "info",
-    defaultLayout: { w: 6, h: 3, minW: 4, minH: 2, maxW: 12, maxH: 6 },
+    defaultLayout: { w: 6, h: 5, minW: 4, minH: 3, maxW: 12, maxH: 10 },
     defaultVisible: true,
   },
   {
@@ -151,7 +151,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     description: "Zuletzt bearbeitete Dokumente",
     icon: "FileText",
     category: "info",
-    defaultLayout: { w: 4, h: 3, minW: 3, minH: 2, maxW: 8, maxH: 6 },
+    defaultLayout: { w: 4, h: 5, minW: 3, minH: 3, maxW: 8, maxH: 10 },
     defaultVisible: false,
   },
   {
@@ -160,7 +160,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     description: "Team-Übersicht mit Mitgliedern",
     icon: "Users",
     category: "info",
-    defaultLayout: { w: 4, h: 3, minW: 3, minH: 2, maxW: 8, maxH: 6 },
+    defaultLayout: { w: 4, h: 5, minW: 3, minH: 3, maxW: 8, maxH: 10 },
     defaultVisible: false,
   },
   {
@@ -169,7 +169,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     description: "Gelernte Organisationsstruktur und Arbeitsabläufe",
     icon: "Network",
     category: "info",
-    defaultLayout: { w: 6, h: 4, minW: 4, minH: 3, maxW: 12, maxH: 8 },
+    defaultLayout: { w: 6, h: 6, minW: 4, minH: 4, maxW: 12, maxH: 12 },
     defaultVisible: false,
   },
 ];

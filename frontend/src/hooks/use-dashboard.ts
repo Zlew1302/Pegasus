@@ -17,19 +17,19 @@ const SWR_STABLE = {
 };
 
 export function useDashboardStats() {
-  const { data, error, isLoading } = useSWR<DashboardStats>(
+  const { data, error, isLoading, mutate } = useSWR<DashboardStats>(
     "/dashboard/stats",
     fetcher,
-    { refreshInterval: 30000, ...SWR_STABLE }
+    { refreshInterval: 15000, ...SWR_STABLE }
   );
-  return { stats: data, error, isLoading };
+  return { stats: data, error, isLoading, mutate };
 }
 
 export function useActivity(limit = 20) {
   const { data, error, isLoading } = useSWR<ActivityEntry[]>(
     `/dashboard/activity?limit=${limit}`,
     fetcher,
-    { refreshInterval: 30000, ...SWR_STABLE }
+    { refreshInterval: 15000, ...SWR_STABLE }
   );
   return { activity: data ?? [], error, isLoading };
 }

@@ -17,6 +17,8 @@ class AgentType(Base):
     capabilities: Mapped[Optional[str]] = mapped_column(Text)  # JSON array
     tools: Mapped[Optional[str]] = mapped_column(Text)  # JSON array
     system_prompt: Mapped[Optional[str]] = mapped_column(Text)
+    provider: Mapped[str] = mapped_column(String(50), default="anthropic")
+    provider_base_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     model: Mapped[str] = mapped_column(String(100), default="claude-sonnet-4-20250514")
     temperature: Mapped[float] = mapped_column(Numeric, default=0.3)
     max_tokens: Mapped[int] = mapped_column(Integer, default=4096)
