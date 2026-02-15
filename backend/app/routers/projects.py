@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -21,7 +22,7 @@ async def list_projects(
     pagination: PaginationParams = Depends(),
     db: AsyncSession = Depends(get_db),
 ):
-    base_filter = Project.owner_id == user_id
+    base_filter = (Project.owner_id == user_id) & (Project.deleted_at.is_(None))
 
     # Total count
     total = await db.scalar(select(func.count()).where(base_filter).select_from(Project))
@@ -77,7 +78,11 @@ async def get_project(
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
-        select(Project).where(Project.id == project_id, Project.owner_id == user_id)
+        select(Project).where(
+            Project.id == project_id,
+            Project.owner_id == user_id,
+            Project.deleted_at.is_(None),
+        )
     )
     project = result.scalar_one_or_none()
     if not project:
@@ -98,7 +103,11 @@ async def update_project(
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
-        select(Project).where(Project.id == project_id, Project.owner_id == user_id)
+        select(Project).where(
+            Project.id == project_id,
+            Project.owner_id == user_id,
+            Project.deleted_at.is_(None),
+        )
     )
     project = result.scalar_one_or_none()
     if not project:
@@ -117,10 +126,15 @@ async def delete_project(
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
-        select(Project).where(Project.id == project_id, Project.owner_id == user_id)
+        select(Project).where(
+            Project.id == project_id,
+            Project.owner_id == user_id,
+            Project.deleted_at.is_(None),
+        )
     )
     project = result.scalar_one_or_none()
     if not project:
         raise HTTPException(status_code=404, detail="Projekt nicht gefunden")
-    await db.delete(project)
+    # Soft-delete: Kosten bleiben über Tasks → AgentInstances → ExecutionSteps erhalten
+    project.deleted_at = datetime.now(UTC)
     await db.commit()

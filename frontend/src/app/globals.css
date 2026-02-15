@@ -180,15 +180,15 @@ body {
   }
 }
 
-/* Info popup animation */
+/* Info popup animation — uses `scale` (not `transform`) to avoid overriding Tailwind translate */
 @keyframes popup-in {
   from {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(0.95);
+    scale: 0.95;
   }
   to {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+    scale: 1;
   }
 }
 

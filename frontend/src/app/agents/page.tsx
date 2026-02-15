@@ -17,6 +17,7 @@ import {
   RotateCw,
   FolderKanban,
   ChevronDown,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/ui/search-bar";
@@ -26,6 +27,7 @@ import {
   pauseAgent,
   resumeAgent,
   cancelAgent,
+  deleteAgentInstance,
 } from "@/hooks/use-agents";
 import { useProjects } from "@/hooks/use-projects";
 import { mutateAfterAgentAction } from "@/lib/swr-helpers";
@@ -37,16 +39,23 @@ import type { AgentInstanceWithTask } from "@/types";
 // ── Error Boundary ──────────────────────────────────────────
 
 class AgentDetailErrorBoundary extends Component<
-  { children: ReactNode; onBack: () => void },
+  { children: ReactNode; onBack: () => void; instanceId: string },
   { hasError: boolean }
 > {
-  constructor(props: { children: ReactNode; onBack: () => void }) {
+  constructor(props: { children: ReactNode; onBack: () => void; instanceId: string }) {
     super(props);
     this.state = { hasError: false };
   }
 
   static getDerivedStateFromError() {
     return { hasError: true };
+  }
+
+  componentDidUpdate(prevProps: { instanceId: string }) {
+    // Reset error state when a different instance is selected
+    if (prevProps.instanceId !== this.props.instanceId && this.state.hasError) {
+      this.setState({ hasError: false });
+    }
   }
 
   render() {
@@ -140,13 +149,16 @@ function AgentInstanceDetail({
   const StatusIcon = config.icon;
   const [cancelConfirm, setCancelConfirm] = useState(false);
 
-  // Defensive thought_log parsing
+  // Defensive thought_log parsing — validate each element
   let thoughts: { text: string; timestamp: string }[] = [];
   if (instance.thought_log) {
     try {
       const parsed = JSON.parse(instance.thought_log);
       if (Array.isArray(parsed)) {
-        thoughts = parsed;
+        thoughts = parsed.filter(
+          (t): t is { text: string; timestamp: string } =>
+            t != null && typeof t === "object" && typeof t.text === "string",
+        );
       }
     } catch {
       // ignore malformed JSON
@@ -340,12 +352,27 @@ export default function AgentsPage() {
   const [projectFilter, setProjectFilter] = useState<string>("");
   const [search, setSearch] = useState("");
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<AgentInstanceWithTask | null>(null);
+
+  const handleDeleteInstance = async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteAgentInstance(deleteTarget.id);
+      mutate();
+      mutateAfterAgentAction();
+    } catch { /* silent */ }
+    setDeleteTarget(null);
+  };
 
   if (selectedInstance) {
     return (
       <div className="h-full overflow-y-auto p-6">
         <div className="mx-auto max-w-4xl">
-          <AgentDetailErrorBoundary onBack={() => setSelectedInstance(null)}>
+          <AgentDetailErrorBoundary
+            key={selectedInstance.id}
+            instanceId={selectedInstance.id}
+            onBack={() => setSelectedInstance(null)}
+          >
             <AgentInstanceDetail
               instance={selectedInstance}
               onBack={() => setSelectedInstance(null)}
@@ -613,6 +640,16 @@ export default function AgentsPage() {
                           <Square className="h-3.5 w-3.5" />
                         </button>
                       )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteTarget(inst);
+                        }}
+                        className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-400"
+                        title="Löschen"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   </div>
                 </button>
@@ -620,6 +657,17 @@ export default function AgentsPage() {
             );
           })}
         </div>
+
+        {/* Delete Confirmation */}
+        <ConfirmDialog
+          open={!!deleteTarget}
+          title="Agent-Instanz löschen?"
+          message={`"${deleteTarget?.agent_type_name ?? "Agent"}" (${deleteTarget?.task_title ?? ""}) wird unwiderruflich gelöscht, inklusive aller Ausführungsschritte und Tracks.`}
+          confirmLabel="Endgültig löschen"
+          destructive
+          onConfirm={handleDeleteInstance}
+          onCancel={() => setDeleteTarget(null)}
+        />
       </div>
     </div>
   );

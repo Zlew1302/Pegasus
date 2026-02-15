@@ -96,6 +96,12 @@ export async function restartAgent(instanceId: string) {
   });
 }
 
+export async function deleteAgentInstance(instanceId: string) {
+  return apiFetch<void>(`/agents/instances/${instanceId}`, {
+    method: "DELETE",
+  });
+}
+
 export function useExecutionSteps(instanceId: string | null) {
   const { data, error } = useSWR<ExecutionStep[]>(
     instanceId ? `/agents/instances/${instanceId}/steps` : null,

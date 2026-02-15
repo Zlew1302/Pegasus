@@ -44,8 +44,10 @@ async def list_tasks(
 async def create_task(
     project_id: str, data: TaskCreate, db: AsyncSession = Depends(get_db)
 ):
-    # Verify project exists
-    proj = await db.execute(select(Project).where(Project.id == project_id))
+    # Verify project exists and is not deleted
+    proj = await db.execute(
+        select(Project).where(Project.id == project_id, Project.deleted_at.is_(None))
+    )
     if not proj.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Projekt nicht gefunden")
 

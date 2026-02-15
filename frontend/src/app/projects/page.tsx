@@ -18,7 +18,7 @@ function ProjectsContent() {
   const [statusFilter, setStatusFilter] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
 
-  // Open modal when navigated with ?new=true (from top nav button)
+  // Open modal when navigated with ?new=true (legacy support)
   useEffect(() => {
     if (searchParams.get("new") === "true") {
       setModalOpen(true);
@@ -71,6 +71,7 @@ function ProjectsContent() {
         onSearchChange={setSearchQuery}
         statusFilter={statusFilter}
         onStatusFilterChange={setStatusFilter}
+        onNewProject={() => setModalOpen(true)}
       />
 
       <div className="flex-1 overflow-y-auto p-4">

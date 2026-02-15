@@ -28,10 +28,11 @@ router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 async def get_dashboard_stats(db: AsyncSession = Depends(get_db)):
     seven_days_ago = datetime.now(UTC) - timedelta(days=7)
 
-    # Active agents (running or initializing)
+    # Active agents (running or initializing, not deleted)
     active_result = await db.execute(
         select(func.count()).select_from(AgentInstance).where(
-            AgentInstance.status.in_(["running", "initializing"])
+            AgentInstance.status.in_(["running", "initializing"]),
+            AgentInstance.deleted_at.is_(None),
         )
     )
     active_agents = active_result.scalar() or 0
@@ -81,6 +82,7 @@ async def get_activity(
         select(AgentInstance, AgentType.name, Task.title)
         .join(AgentType, AgentInstance.agent_type_id == AgentType.id)
         .join(Task, AgentInstance.task_id == Task.id)
+        .where(AgentInstance.deleted_at.is_(None))
         .order_by(AgentInstance.started_at.desc().nullslast())
         .limit(limit)
     )
@@ -211,6 +213,7 @@ async def get_budget_overview(db: AsyncSession = Depends(get_db)):
             func.coalesce(spent_sq.c.spent, 0).label("spent_cents"),
         )
         .outerjoin(spent_sq, Project.id == spent_sq.c.project_id)
+        .where(Project.deleted_at.is_(None))
         .order_by(Project.title)
     )
 

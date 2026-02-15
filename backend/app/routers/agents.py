@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import delete as delete_stmt, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -214,6 +214,7 @@ async def list_agent_instances(
         .join(Task, AgentInstance.task_id == Task.id)
         .outerjoin(AgentType, AgentInstance.agent_type_id == AgentType.id)
         .outerjoin(Project, Task.project_id == Project.id)
+        .where(AgentInstance.deleted_at.is_(None))
     )
 
     if project_id:
@@ -355,6 +356,38 @@ async def restart_agent(instance_id: str, db: AsyncSession = Depends(get_db)):
     launch_agent_task(new_instance.id)
 
     return AgentInstanceResponse.model_validate(new_instance)
+
+
+@router.delete("/instances/{instance_id}", status_code=204)
+async def delete_agent_instance(instance_id: str, db: AsyncSession = Depends(get_db)):
+    """Agent-Instanz soft-deleten (Kosten bleiben erhalten)."""
+    result = await db.execute(
+        select(AgentInstance).where(
+            AgentInstance.id == instance_id,
+            AgentInstance.deleted_at.is_(None),
+        )
+    )
+    instance = result.scalar_one_or_none()
+    if not instance:
+        raise HTTPException(status_code=404, detail="Agent-Instanz nicht gefunden")
+    # Cancel if still running
+    if instance.status in ("initializing", "running", "paused", "waiting_input"):
+        agent = get_running_agent(instance_id)
+        if agent:
+            agent.cancel()
+        instance.status = "cancelled"
+    # Soft-delete: mark as deleted, keep ExecutionSteps for cost tracking
+    instance.deleted_at = datetime.now(UTC)
+    # Clean up non-cost-relevant related records
+    from app.models.approval import Approval
+    from app.models.tracks import TrackPoint
+    await db.execute(
+        delete_stmt(Approval).where(Approval.agent_instance_id == instance_id)
+    )
+    await db.execute(
+        delete_stmt(TrackPoint).where(TrackPoint.agent_instance_id == instance_id)
+    )
+    await db.commit()
 
 
 @router.post("/instances/{instance_id}/message", response_model=AgentInstanceResponse)

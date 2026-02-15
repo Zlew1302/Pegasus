@@ -14,7 +14,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 # Context var for request ID — accessible anywhere during request lifecycle
 request_id_var: ContextVar[str] = ContextVar("request_id", default="")
 
-logger = logging.getLogger("crewboard")
+logger = logging.getLogger("pegasus")
 
 
 # ── Structured Logging Setup ─────────────────────────────────────

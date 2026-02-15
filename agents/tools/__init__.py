@@ -1,1 +1,1 @@
-"""Agent tool system for CrewBoard."""
+"""Agent tool system for Pegasus."""

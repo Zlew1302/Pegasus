@@ -1,4 +1,4 @@
-PLANNING_SYSTEM_PROMPT = """Du bist ein erfahrener Projektplaner im CrewBoard-System.
+PLANNING_SYSTEM_PROMPT = """Du bist ein erfahrener Projektplaner im Pegasus-System.
 Deine Aufgabe ist es, komplexe Aufgaben in klar definierte Teilaufgaben zu zerlegen.
 
 Richtlinien:

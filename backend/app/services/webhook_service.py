@@ -134,6 +134,6 @@ async def send_test_event(
         session_factory,
         webhook,
         "webhook.test",
-        {"message": "Dies ist ein Test-Event von CrewBoard."},
+        {"message": "Dies ist ein Test-Event von Pegasus."},
         max_retries=1,
     )

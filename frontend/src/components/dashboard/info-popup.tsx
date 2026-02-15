@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 interface InfoPopupProps {
@@ -16,6 +17,9 @@ interface InfoPopupProps {
 
 export function InfoPopup({ open, onClose, title, children, anchorRef, wide }: InfoPopupProps) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     if (!open) return;
@@ -44,17 +48,17 @@ export function InfoPopup({ open, onClose, title, children, anchorRef, wide }: I
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
-  return (
+  const popup = (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 z-40 bg-black/30" />
-      {/* Panel */}
+      <div className="fixed inset-0 z-[9998] bg-black/30" />
+      {/* Panel — rendered via portal to guarantee viewport-relative centering */}
       <div
         ref={panelRef}
-        className={`fixed left-1/2 top-1/2 z-50 w-full max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-4 shadow-2xl ${wide ? "sm:max-w-2xl" : "sm:max-w-md"}`}
-        style={{ animation: "popup-in 150ms ease-out forwards", opacity: 0 }}
+        className={`fixed left-1/2 top-1/2 z-[9999] w-full max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-4 shadow-2xl ${wide ? "sm:max-w-2xl" : "sm:max-w-md"}`}
+        style={{ animation: "popup-in 150ms ease-out forwards" }}
       >
         {/* Header */}
         <div className="mb-3 flex items-center justify-between">
@@ -71,4 +75,6 @@ export function InfoPopup({ open, onClose, title, children, anchorRef, wide }: I
       </div>
     </>
   );
+
+  return createPortal(popup, document.body);
 }

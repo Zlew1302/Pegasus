@@ -58,7 +58,7 @@ export function ExecutionSteps({ instanceId }: ExecutionStepsProps) {
                   <RotateCw className="h-3 w-3 text-blue-400" />
                 )}
                 <span className="flex-1 truncate text-muted-foreground">
-                  {step.description}
+                  {step.description ?? "–"}
                 </span>
                 {step.duration_ms != null && (
                   <span className="text-[10px] text-muted-foreground/60">

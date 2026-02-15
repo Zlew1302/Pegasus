@@ -15,7 +15,7 @@ from app.services.task_service import validate_status_transition
 class CreateProjectTool:
     name = "create_project"
     description = (
-        "Erstellt ein neues Projekt in CrewBoard. "
+        "Erstellt ein neues Projekt in Pegasus. "
         "Nutze dieses Tool wenn der User ein neues Projekt anlegen moechte."
     )
 

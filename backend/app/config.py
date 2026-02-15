@@ -39,7 +39,7 @@ def _load_env_file_first() -> dict[str, str]:
 
 # Absolute path to backend/ directory — ensures DB is always found
 _BACKEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-_DEFAULT_DB_URL = f"sqlite+aiosqlite:///{os.path.join(_BACKEND_DIR, 'crewboard.db')}"
+_DEFAULT_DB_URL = f"sqlite+aiosqlite:///{os.path.join(_BACKEND_DIR, 'pegasus.db')}"
 
 
 class Settings(BaseSettings):

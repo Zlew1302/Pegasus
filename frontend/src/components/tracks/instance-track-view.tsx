@@ -125,7 +125,7 @@ function TrackPointRow({ point }: { point: TrackPointEntry }) {
       {expanded && (
         <div className="ml-6 mt-1 space-y-1 rounded-md bg-secondary/20 p-2 text-[10px]">
           {/* Entities */}
-          {point.entities.length > 0 && (
+          {point.entities?.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {point.entities.map((e, i) => {
                 const colors = ENTITY_TYPE_COLORS[e.type] ?? {
@@ -185,7 +185,7 @@ export function InstanceTrackView({ instanceId }: InstanceTrackViewProps) {
     );
   }
 
-  if (!tracks || tracks.total_points === 0) {
+  if (!tracks || !tracks.track_points || tracks.total_points === 0) {
     return null; // Don't show if no tracks
   }
 
@@ -205,7 +205,7 @@ export function InstanceTrackView({ instanceId }: InstanceTrackViewProps) {
 
       {!collapsed && (
         <div className="mt-1 space-y-0.5">
-          {tracks.track_points.map((point) => (
+          {tracks.track_points?.map((point) => (
             <TrackPointRow key={point.id} point={point} />
           ))}
         </div>

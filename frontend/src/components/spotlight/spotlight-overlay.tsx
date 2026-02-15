@@ -184,7 +184,7 @@ export function SpotlightOverlay() {
         {/* Footer hint */}
         <div className="flex items-center justify-between border-t border-border/40 px-4 py-1.5">
           <span className="text-[10px] text-muted-foreground/50">
-            CrewBoard AI
+            Pegasus AI
           </span>
           <div className="flex items-center gap-2 text-[10px] text-muted-foreground/50">
             <span>

@@ -10,7 +10,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "CrewBoard",
+  title: "Pegasus",
   description: "PM-Tool mit KI-Agenten",
 };
 

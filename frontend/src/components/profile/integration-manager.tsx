@@ -95,7 +95,7 @@ const INTEGRATIONS: Integration[] = [
   },
 ];
 
-const STORAGE_KEY = "crewboard-integrations";
+const STORAGE_KEY = "pegasus-integrations";
 
 // ── Helpers ──────────────────────────────────────────────────
 

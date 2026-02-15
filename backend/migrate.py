@@ -12,14 +12,26 @@ import sys
 
 def get_db_path() -> str:
     """Extract SQLite file path from DATABASE_URL."""
-    url = os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///./data/crewboard.db")
-    # URL format: sqlite+aiosqlite:///./data/crewboard.db
-    path = url.split("///", 1)[-1] if "///" in url else "./data/crewboard.db"
+    url = os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///./data/pegasus.db")
+    # URL format: sqlite+aiosqlite:///./data/pegasus.db
+    path = url.split("///", 1)[-1] if "///" in url else "./data/pegasus.db"
     return path
+
+
+def _rename_legacy_db(db_path: str):
+    """Rename crewboard.db → pegasus.db if the old file exists."""
+    db_dir = os.path.dirname(db_path) or "."
+    old_path = os.path.join(db_dir, "crewboard.db")
+    if os.path.exists(old_path) and not os.path.exists(db_path):
+        os.rename(old_path, db_path)
+        print(f"[migrate] Renamed {old_path} → {db_path}")
 
 
 def main():
     db_path = get_db_path()
+
+    # Rename legacy DB file if needed
+    _rename_legacy_db(db_path)
 
     if not os.path.exists(db_path):
         print(f"[migrate] Database {db_path} does not exist yet — skipping migration (create_all will handle it)")

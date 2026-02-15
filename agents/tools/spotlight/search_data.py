@@ -13,7 +13,7 @@ from app.models.agent import AgentType, AgentInstance
 class SearchDataTool:
     name = "search_data"
     description = (
-        "Durchsucht die CrewBoard-Datenbank nach Tasks, Projekten oder Agenten. "
+        "Durchsucht die Pegasus-Datenbank nach Tasks, Projekten oder Agenten. "
         "Kann nach Titel, Status, Prioritaet und Projekt filtern. "
         "Nutze dieses Tool wenn der User nach bestimmten Eintraegen sucht."
     )

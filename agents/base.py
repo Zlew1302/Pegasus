@@ -1,4 +1,4 @@
-"""Base agent class for all CrewBoard agents."""
+"""Base agent class for all Pegasus agents."""
 
 import asyncio
 import json

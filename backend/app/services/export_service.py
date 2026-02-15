@@ -209,7 +209,7 @@ async def export_project_pdf(db: AsyncSession, project_id: str) -> bytes:
     # Footer
     elements.append(Spacer(1, 10 * mm))
     elements.append(Paragraph(
-        f"Erstellt am {datetime.now().strftime('%d.%m.%Y %H:%M')} — CrewBoard",
+        f"Erstellt am {datetime.now().strftime('%d.%m.%Y %H:%M')} — Pegasus",
         styles["Normal"],
     ))
 

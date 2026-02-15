@@ -1,10 +1,11 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Pin, PinOff, Trash2, Loader2 } from "lucide-react";
 import { useDocument } from "@/hooks/use-documents";
 import { DocumentEditor } from "@/components/workspace/document-editor";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export default function WorkspaceDocumentPage({
   params,
@@ -14,6 +15,13 @@ export default function WorkspaceDocumentPage({
   const { id } = use(params);
   const router = useRouter();
   const { document: doc, updateDocument, isLoading } = useDocument(id);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const handleDelete = async () => {
+    const { apiFetch } = await import("@/lib/api");
+    await apiFetch(`/documents/${id}`, { method: "DELETE" });
+    router.push("/workspace");
+  };
 
   if (isLoading) {
     return (
@@ -60,11 +68,7 @@ export default function WorkspaceDocumentPage({
         </button>
 
         <button
-          onClick={async () => {
-            const { apiFetch } = await import("@/lib/api");
-            await apiFetch(`/documents/${id}`, { method: "DELETE" });
-            router.push("/workspace");
-          }}
+          onClick={() => setConfirmDelete(true)}
           className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-400"
           title="Löschen"
         >
@@ -76,6 +80,17 @@ export default function WorkspaceDocumentPage({
       <div className="flex-1 overflow-y-auto py-6">
         <DocumentEditor documentId={id} />
       </div>
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Dokument löschen?"
+        message={`"${doc.title}" wird unwiderruflich gelöscht, inklusive aller Blöcke.`}
+        confirmLabel="Endgültig löschen"
+        destructive
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </div>
   );
 }

@@ -12,13 +12,27 @@ import {
   Coins,
   Zap,
   Plus,
+  Pause,
+  Play,
+  Square,
+  RotateCw,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/ui/search-bar";
-import { useProjectAgentInstances, useExecutionSteps } from "@/hooks/use-agents";
+import {
+  useProjectAgentInstances,
+  useExecutionSteps,
+  pauseAgent,
+  resumeAgent,
+  cancelAgent,
+  deleteAgentInstance,
+} from "@/hooks/use-agents";
+import { mutateAfterAgentAction } from "@/lib/swr-helpers";
 import { AgentCreateDialog } from "@/components/agent/agent-create-dialog";
 import { ExecutionSteps } from "@/components/agent/execution-steps";
 import { InstanceTrackView } from "@/components/tracks/instance-track-view";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { AgentInstanceWithTask, AgentInstanceStatus } from "@/types";
 
 interface ProjectAgentsTabProps {
@@ -72,27 +86,55 @@ function formatDuration(startedAt: string | null, completedAt: string | null): s
 function AgentInstanceDetail({
   instance,
   onBack,
+  onAction,
 }: {
   instance: AgentInstanceWithTask;
   onBack: () => void;
+  onAction: () => void;
 }) {
   const { steps } = useExecutionSteps(instance.id);
   const config = STATUS_CONFIG[instance.status] ?? STATUS_CONFIG.completed;
   const StatusIcon = config.icon;
+  const [cancelConfirm, setCancelConfirm] = useState(false);
 
-  // Parse thought log
+  // Defensive thought_log parsing — validate each element
   let thoughts: { text: string; timestamp: string }[] = [];
   if (instance.thought_log) {
     try {
-      thoughts = JSON.parse(instance.thought_log);
+      const parsed = JSON.parse(instance.thought_log);
+      if (Array.isArray(parsed)) {
+        thoughts = parsed.filter(
+          (t): t is { text: string; timestamp: string } =>
+            t != null && typeof t === "object" && typeof t.text === "string",
+        );
+      }
     } catch {
-      // ignore
+      // ignore malformed JSON
     }
   }
 
   // Token sums from steps
   const totalTokensIn = steps.reduce((s, st) => s + (st.tokens_in ?? 0), 0);
   const totalTokensOut = steps.reduce((s, st) => s + (st.tokens_out ?? 0), 0);
+
+  const progressPercent = instance.progress_percent ?? 0;
+  const totalCostCents = instance.total_cost_cents ?? 0;
+
+  const canPause = instance.status === "running";
+  const canResume = instance.status === "paused";
+  const canCancel = ["initializing", "running", "paused", "waiting_input"].includes(instance.status);
+  const canRestart = ["completed", "failed", "cancelled"].includes(instance.status);
+
+  const handlePause = async () => {
+    try { await pauseAgent(instance.id); onAction(); mutateAfterAgentAction(); } catch { /* silent */ }
+  };
+  const handleResume = async () => {
+    try { await resumeAgent(instance.id); onAction(); mutateAfterAgentAction(); } catch { /* silent */ }
+  };
+  const handleCancel = async () => {
+    try { await cancelAgent(instance.id); onAction(); mutateAfterAgentAction(); } catch { /* silent */ }
+    setCancelConfirm(false);
+  };
 
   return (
     <div className="space-y-4">
@@ -111,6 +153,42 @@ function AgentInstanceDetail({
         </span>
       </div>
 
+      {/* Action Buttons */}
+      <div className="flex gap-2">
+        {canPause && (
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={handlePause}>
+            <Pause className="h-3.5 w-3.5" />
+            Pausieren
+          </Button>
+        )}
+        {canResume && (
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={handleResume}>
+            <Play className="h-3.5 w-3.5" />
+            Fortsetzen
+          </Button>
+        )}
+        {canRestart && (
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={async () => {
+            try {
+              const { restartAgent } = await import("@/hooks/use-agents");
+              await restartAgent(instance.id);
+              onAction();
+              mutateAfterAgentAction();
+              onBack();
+            } catch { /* silent */ }
+          }}>
+            <RotateCw className="h-3.5 w-3.5" />
+            Neu starten
+          </Button>
+        )}
+        {canCancel && (
+          <Button size="sm" variant="destructive" className="gap-1.5" onClick={() => setCancelConfirm(true)}>
+            <Square className="h-3.5 w-3.5" />
+            Abbrechen
+          </Button>
+        )}
+      </div>
+
       {/* KPI Cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-lg border border-border bg-card p-3">
@@ -119,7 +197,7 @@ function AgentInstanceDetail({
         </div>
         <div className="rounded-lg border border-border bg-card p-3">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Kosten</p>
-          <p className="text-lg font-semibold">{((instance.total_cost_cents ?? 0) / 100).toFixed(3)} €</p>
+          <p className="text-lg font-semibold">{(totalCostCents / 100).toFixed(3)} €</p>
         </div>
         <div className="rounded-lg border border-border bg-card p-3">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Tokens rein</p>
@@ -132,16 +210,16 @@ function AgentInstanceDetail({
       </div>
 
       {/* Progress */}
-      {instance.progress_percent > 0 && (
+      {progressPercent > 0 && (
         <div>
           <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
             <span>Fortschritt</span>
-            <span>{instance.progress_percent}%</span>
+            <span>{progressPercent}%</span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-muted">
             <div
               className="h-full rounded-full bg-[var(--agent-glow-color)] transition-all"
-              style={{ width: `${instance.progress_percent}%` }}
+              style={{ width: `${progressPercent}%` }}
             />
           </div>
           {instance.current_step && (
@@ -157,8 +235,8 @@ function AgentInstanceDetail({
           <div className="max-h-48 overflow-y-auto rounded-lg border border-border bg-background p-3">
             <div className="space-y-1 font-mono text-xs text-muted-foreground">
               {thoughts.slice(-30).map((t, i) => (
-                <p key={i} className={`leading-relaxed ${t.text.startsWith("🔧") ? "text-amber-400/80" : t.text.startsWith("🤖") ? "text-blue-400/80" : ""}`}>
-                  {t.text}
+                <p key={i} className={`leading-relaxed ${t.text?.startsWith("🔧") ? "text-amber-400/80" : t.text?.startsWith("🤖") ? "text-blue-400/80" : ""}`}>
+                  {t.text ?? ""}
                 </p>
               ))}
             </div>
@@ -177,6 +255,17 @@ function AgentInstanceDetail({
         <h4 className="mb-2 text-sm font-medium text-muted-foreground">Decision Tracks</h4>
         <InstanceTrackView instanceId={instance.id} />
       </div>
+
+      {/* Cancel Confirmation */}
+      <ConfirmDialog
+        open={cancelConfirm}
+        title="Agent abbrechen?"
+        message={`"${instance.agent_type_name ?? "Agent"}" wird gestoppt. Diese Aktion kann nicht rückgängig gemacht werden.`}
+        confirmLabel="Abbrechen"
+        destructive
+        onConfirm={handleCancel}
+        onCancel={() => setCancelConfirm(false)}
+      />
     </div>
   );
 }
@@ -184,11 +273,24 @@ function AgentInstanceDetail({
 // ── List View ────────────────────────────────────────────────
 
 export function ProjectAgentsTab({ projectId }: ProjectAgentsTabProps) {
-  const { instances, isLoading } = useProjectAgentInstances(projectId);
+  const { instances, isLoading, mutate } = useProjectAgentInstances(projectId);
   const [selectedInstance, setSelectedInstance] = useState<AgentInstanceWithTask | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [search, setSearch] = useState("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<AgentInstanceWithTask | null>(null);
+
+  const handleDeleteInstance = async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteAgentInstance(deleteTarget.id);
+      mutate();
+      mutateAfterAgentAction();
+      setDeleteTarget(null);
+    } catch {
+      /* silent */
+    }
+  };
 
   if (selectedInstance) {
     return (
@@ -196,6 +298,7 @@ export function ProjectAgentsTab({ projectId }: ProjectAgentsTabProps) {
         <AgentInstanceDetail
           instance={selectedInstance}
           onBack={() => setSelectedInstance(null)}
+          onAction={() => mutate()}
         />
       </div>
     );
@@ -293,58 +396,84 @@ export function ProjectAgentsTab({ projectId }: ProjectAgentsTabProps) {
           const StatusIcon = config.icon;
 
           return (
-            <button
+            <div
               key={inst.id}
-              onClick={() => setSelectedInstance(inst)}
-              className="w-full rounded-lg border border-border bg-card p-4 text-left transition-colors hover:bg-muted/50"
+              className="group/card relative rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted/50"
             >
-              <div className="flex items-start gap-3">
-                <div className={`mt-0.5 rounded-full p-1.5 ${config.bg}`}>
-                  <Bot className={`h-4 w-4 ${config.color}`} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">{inst.agent_type_name ?? "Agent"}</span>
-                    <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${config.color} ${config.bg}`}>
-                      <StatusIcon className={`h-2.5 w-2.5 ${inst.status === "running" || inst.status === "initializing" ? "animate-spin" : ""}`} />
-                      {config.label}
-                    </span>
+              <button
+                onClick={() => setSelectedInstance(inst)}
+                className="w-full text-left"
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`mt-0.5 rounded-full p-1.5 ${config.bg}`}>
+                    <Bot className={`h-4 w-4 ${config.color}`} />
                   </div>
-                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                    {inst.task_title ?? "Unbekannte Aufgabe"}
-                  </p>
-                  <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground">
-                    {inst.progress_percent > 0 && inst.progress_percent < 100 && (
-                      <span className="flex items-center gap-1">
-                        <div className="h-1 w-12 overflow-hidden rounded-full bg-muted">
-                          <div
-                            className="h-full rounded-full bg-[var(--agent-glow-color)]"
-                            style={{ width: `${inst.progress_percent}%` }}
-                          />
-                        </div>
-                        {inst.progress_percent}%
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{inst.agent_type_name ?? "Agent"}</span>
+                      <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${config.color} ${config.bg}`}>
+                        <StatusIcon className={`h-2.5 w-2.5 ${inst.status === "running" || inst.status === "initializing" ? "animate-spin" : ""}`} />
+                        {config.label}
                       </span>
-                    )}
-                    {inst.current_step && (
-                      <span className="max-w-[200px] truncate">{inst.current_step}</span>
-                    )}
-                    <span className="flex items-center gap-0.5">
-                      <Clock className="h-2.5 w-2.5" />
-                      {formatRelativeTime(inst.started_at)}
-                    </span>
-                    {inst.total_cost_cents > 0 && (
+                    </div>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                      {inst.task_title ?? "Unbekannte Aufgabe"}
+                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground">
+                      {(inst.progress_percent ?? 0) > 0 && (inst.progress_percent ?? 0) < 100 && (
+                        <span className="flex items-center gap-1">
+                          <div className="h-1 w-12 overflow-hidden rounded-full bg-muted">
+                            <div
+                              className="h-full rounded-full bg-[var(--agent-glow-color)]"
+                              style={{ width: `${inst.progress_percent ?? 0}%` }}
+                            />
+                          </div>
+                          {inst.progress_percent ?? 0}%
+                        </span>
+                      )}
+                      {inst.current_step && (
+                        <span className="max-w-[200px] truncate">{inst.current_step}</span>
+                      )}
                       <span className="flex items-center gap-0.5">
-                        <Coins className="h-2.5 w-2.5" />
-                        {(inst.total_cost_cents / 100).toFixed(3)} €
+                        <Clock className="h-2.5 w-2.5" />
+                        {formatRelativeTime(inst.started_at)}
                       </span>
-                    )}
+                      {(inst.total_cost_cents ?? 0) > 0 && (
+                        <span className="flex items-center gap-0.5">
+                          <Coins className="h-2.5 w-2.5" />
+                          {((inst.total_cost_cents ?? 0) / 100).toFixed(3)} €
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </button>
+              </button>
+              {/* Delete button — visible on hover */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDeleteTarget(inst);
+                }}
+                className="absolute right-3 top-3 rounded-md p-1.5 text-muted-foreground opacity-0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover/card:opacity-100"
+                title="Löschen"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
           );
         })}
       </div>
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Agent-Instanz löschen?"
+        message={`"${deleteTarget?.agent_type_name ?? "Agent"}" und alle zugehörigen Daten werden gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`}
+        confirmLabel="Löschen"
+        destructive
+        onConfirm={handleDeleteInstance}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

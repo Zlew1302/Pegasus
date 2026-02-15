@@ -13,7 +13,7 @@ from app.models.agent import AgentInstance, AgentType
 class QueryStatsTool:
     name = "query_stats"
     description = (
-        "Beantwortet statistische Fragen ueber CrewBoard-Daten: "
+        "Beantwortet statistische Fragen ueber Pegasus-Daten: "
         "Anzahl offener Tasks, Projektstatus, Agent-Aktivitaet, usw. "
         "Nutze dieses Tool fuer Fragen wie 'Wie viele Tasks sind offen?' oder 'Was ist der Projektstatus?'"
     )
@@ -165,7 +165,7 @@ class QueryStatsTool:
             )).scalar() or 0
 
         lines = [
-            "## CrewBoard Uebersicht\n",
+            "## Pegasus Uebersicht\n",
             f"- **{project_count}** Projekte",
             f"- **{task_count}** Tasks gesamt ({open_tasks} offen, {done_tasks} erledigt)",
             f"- **{running_agents}** Agenten laufen gerade",

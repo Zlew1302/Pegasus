@@ -22,7 +22,7 @@ export function Sidebar({
       {/* Header */}
       <div className="flex items-center gap-2 border-b border-border px-4 py-3">
         <Bot className="h-6 w-6 text-[var(--agent-glow-color)]" />
-        <h1 className="text-lg font-bold">CrewBoard</h1>
+        <h1 className="text-lg font-bold">Pegasus</h1>
       </div>
 
       {/* Projects */}
@@ -66,7 +66,7 @@ export function Sidebar({
       {/* Footer */}
       <div className="border-t border-border px-4 py-2">
         <span className="text-xs text-muted-foreground">
-          CrewBoard v0.1
+          Pegasus v0.1
         </span>
       </div>
     </div>

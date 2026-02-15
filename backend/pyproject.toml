@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "crewboard-backend"
+name = "pegasus-backend"
 version = "0.1.0"
-description = "CrewBoard Backend — PM-Tool mit KI-Agenten"
+description = "Pegasus Backend — PM-Tool mit KI-Agenten"
 requires-python = ">=3.11"
 
 dependencies = [

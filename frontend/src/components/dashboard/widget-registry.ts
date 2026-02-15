@@ -26,7 +26,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     description: "Anzahl aktuell laufender KI-Agenten",
     icon: "Bot",
     category: "kpi",
-    defaultLayout: { w: 3, h: 2, minW: 2, minH: 2, maxW: 4, maxH: 2 },
+    defaultLayout: { w: 3, h: 1, minW: 2, minH: 1, maxW: 4, maxH: 1 },
     defaultVisible: true,
   },
   {
@@ -35,7 +35,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     description: "Erledigte Tasks der aktuellen Woche",
     icon: "CheckCircle2",
     category: "kpi",
-    defaultLayout: { w: 3, h: 2, minW: 2, minH: 2, maxW: 4, maxH: 2 },
+    defaultLayout: { w: 3, h: 1, minW: 2, minH: 1, maxW: 4, maxH: 1 },
     defaultVisible: true,
   },
   {
@@ -44,7 +44,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     description: "Token-Ausgaben der letzten 7 Tage",
     icon: "Wallet",
     category: "kpi",
-    defaultLayout: { w: 3, h: 2, minW: 2, minH: 2, maxW: 4, maxH: 2 },
+    defaultLayout: { w: 3, h: 1, minW: 2, minH: 1, maxW: 4, maxH: 1 },
     defaultVisible: true,
   },
   {
@@ -53,7 +53,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     description: "Genehmigungen die auf Eingabe warten",
     icon: "MessageSquareWarning",
     category: "kpi",
-    defaultLayout: { w: 3, h: 2, minW: 2, minH: 2, maxW: 4, maxH: 2 },
+    defaultLayout: { w: 3, h: 1, minW: 2, minH: 1, maxW: 4, maxH: 1 },
     defaultVisible: true,
   },
 

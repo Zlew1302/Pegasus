@@ -1,7 +1,7 @@
 FROM node:20-alpine AS base
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Install pnpm (v8 — stable for non-workspace projects)
+RUN npm install -g pnpm@8
 
 # --- Dependencies ---
 FROM base AS deps

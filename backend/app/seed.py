@@ -13,7 +13,7 @@ PLANNING_AGENT_ID = "agent-planning-001"
 WRITING_AGENT_ID = "agent-writing-001"
 QA_AGENT_ID = "agent-qa-001"
 
-RESEARCH_SYSTEM_PROMPT = """Du bist ein erfahrener Research Agent im CrewBoard-System.
+RESEARCH_SYSTEM_PROMPT = """Du bist ein erfahrener Research Agent im Pegasus-System.
 Deine Aufgabe ist es, gruendliche Recherchen durchzufuehren und strukturierte Berichte zu erstellen.
 
 Richtlinien:

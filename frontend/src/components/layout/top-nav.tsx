@@ -1,8 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { Bot, Plus, LayoutDashboard, Briefcase, FolderKanban, User } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Bot, LayoutDashboard, Briefcase, FolderKanban } from "lucide-react";
 import { NotificationBell } from "./notification-bell";
 
 const NAV_ITEMS = [
@@ -10,7 +9,6 @@ const NAV_ITEMS = [
   { href: "/projects", label: "Projekte", icon: FolderKanban },
   { href: "/workspace", label: "Workspace", icon: Briefcase },
   { href: "/agents", label: "Agenten", icon: Bot },
-  { href: "/profile", label: "Profil", icon: User },
 ] as const;
 
 export function TopNav() {
@@ -27,7 +25,7 @@ export function TopNav() {
           className="flex items-center gap-2"
         >
           <Bot className="h-6 w-6 text-[hsl(var(--accent-orange))]" />
-          <span className="text-lg font-bold">CrewBoard</span>
+          <span className="text-lg font-bold">Pegasus</span>
         </button>
 
         {/* Nav Pills */}
@@ -55,15 +53,6 @@ export function TopNav() {
 
       {/* Right: Actions */}
       <div className="flex items-center gap-2">
-        <Button
-          onClick={() => router.push("/projects?new=true")}
-          size="sm"
-          className="bg-[hsl(var(--accent-orange))] text-white hover:bg-[hsl(var(--accent-orange))]/90"
-        >
-          <Plus className="mr-1 h-4 w-4" />
-          Neues Projekt
-        </Button>
-
         <NotificationBell />
 
         <button

@@ -12,7 +12,7 @@ from app.models.task import Task
 class NavigateTool:
     name = "navigate"
     description = (
-        "Navigiert zu einer bestimmten Seite in CrewBoard. "
+        "Navigiert zu einer bestimmten Seite in Pegasus. "
         "Gibt den URL-Pfad zurueck, damit der User dorthin geleitet wird. "
         "Nutze dieses Tool wenn der User eine Seite oeffnen oder zu etwas navigieren moechte."
     )

@@ -13,7 +13,7 @@ from app.sse.manager import SSEEvent
 from agents.tools.spotlight import SPOTLIGHT_TOOLS, SpotlightToolContext
 
 
-SYSTEM_PROMPT_TEMPLATE = """Du bist der CrewBoard AI-Assistent — ein intelligenter Helfer, der in einem Projektmanagement-Tool integriert ist.
+SYSTEM_PROMPT_TEMPLATE = """Du bist der Pegasus AI-Assistent — ein intelligenter Helfer, der in einem Projektmanagement-Tool integriert ist.
 
 ## Deine Faehigkeiten
 - **Navigation**: Oeffne Seiten, Projekte, Tasks, Dokumente

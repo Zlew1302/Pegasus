@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Search, ChevronDown, Filter } from "lucide-react";
+import { Search, ChevronDown, Filter, Plus } from "lucide-react";
 import { STATUS_OPTIONS } from "./project-card";
 
 interface FilterBarProps {
@@ -9,6 +9,7 @@ interface FilterBarProps {
   onSearchChange: (q: string) => void;
   statusFilter: string;
   onStatusFilterChange: (s: string) => void;
+  onNewProject?: () => void;
 }
 
 export function FilterBar({
@@ -16,6 +17,7 @@ export function FilterBar({
   onSearchChange,
   statusFilter,
   onStatusFilterChange,
+  onNewProject,
 }: FilterBarProps) {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -104,6 +106,17 @@ export function FilterBar({
           </div>
         )}
       </div>
+
+      {/* New Project button */}
+      {onNewProject && (
+        <button
+          onClick={onNewProject}
+          className="flex min-w-[10.5rem] items-center justify-center gap-1.5 rounded-md bg-[hsl(var(--accent-orange))] px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-[hsl(var(--accent-orange))]/90"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Neues Projekt
+        </button>
+      )}
     </div>
   );
 }

@@ -23,7 +23,10 @@ async def search_commands(
             select(Task).order_by(Task.updated_at.desc()).limit(5)
         )
         projects = await db.execute(
-            select(Project).order_by(Project.updated_at.desc()).limit(5)
+            select(Project)
+            .where(Project.deleted_at.is_(None))
+            .order_by(Project.updated_at.desc())
+            .limit(5)
         )
         agents = await db.execute(select(AgentType).order_by(AgentType.name))
     else:
@@ -35,7 +38,10 @@ async def search_commands(
         )
         projects = await db.execute(
             select(Project)
-            .where(Project.title.ilike(pattern) | Project.description.ilike(pattern))
+            .where(
+                Project.deleted_at.is_(None),
+                Project.title.ilike(pattern) | Project.description.ilike(pattern),
+            )
             .limit(5)
         )
         agents = await db.execute(

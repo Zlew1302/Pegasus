@@ -50,3 +50,4 @@ class AgentInstance(Base):
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     parent_instance_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
     total_cost_cents: Mapped[int] = mapped_column(Integer, default=0)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)

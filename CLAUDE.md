@@ -1,4 +1,4 @@
-# CrewBoard — Projektregeln
+# Pegasus — Projektregeln
 
 ## Stack
 - Backend: Python 3.12, FastAPI, SQLAlchemy 2.0 async, SQLite (aiosqlite), Pydantic v2
@@ -74,6 +74,20 @@
 - Lazy-Loading für schwere Module (sentence-transformers)
 - Token-Budget-System für Context Injection
 - DB-Sessions: Kurzlebig, commit + close
+
+## Docker-Deployment
+- Deployment: `docker compose up -d --build` aus Projekt-Root
+- Backend-Dockerfile: `backend/Dockerfile`, Frontend: `frontend/Dockerfile`
+- DB-Volume: `./backend/data/pegasus.db` (persistent über Rebuilds)
+- Migrations: `backend/migrate.py` läuft automatisch vor Server-Start
+- **Nach Backend-Änderungen**: IMMER `docker compose up -d --build` ausführen
+- **Nach Frontend-Änderungen**: IMMER `docker compose up -d --build` ausführen
+- **Docker-Cache bereinigen** bei unerklärlichem Verhalten: `docker compose down && docker compose build --no-cache && docker compose up -d`
+- **Alte Container/Images aufräumen**: `docker system prune -f` nach größeren Rebuilds
+- NIEMALS altes Frontend/Backend im Container lassen — bei Code-Änderungen IMMER neu bauen
+- Neue Python-Dependencies: SOWOHL in `pyproject.toml` ALS AUCH in `backend/requirements.txt` eintragen
+- Neue Alembic-Migrationen: `backend/migrations/versions/` — idempotent mit `_column_exists()` Guards
+- Storage-Key-Versioning: Bei Layout-Änderungen `STORAGE_KEY` in `use-dashboard-layout.ts` hochzählen
 
 ## Verbotene Patterns
 - KEIN `datetime.utcnow()` (deprecated)

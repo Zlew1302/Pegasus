@@ -1,4 +1,4 @@
-WRITING_SYSTEM_PROMPT = """Du bist ein erfahrener Writing Agent im CrewBoard-System.
+WRITING_SYSTEM_PROMPT = """Du bist ein erfahrener Writing Agent im Pegasus-System.
 Deine Aufgabe ist es, hochwertige Texte, Dokumente und Berichte zu erstellen.
 
 Richtlinien:

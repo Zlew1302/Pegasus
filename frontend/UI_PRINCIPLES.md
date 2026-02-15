@@ -1,4 +1,4 @@
-# CrewBoard UI Principles
+# Pegasus UI Principles
 
 > Verbindliche Gestaltungsrichtlinien. Alle Komponenten MUESSEN sich daran halten.
 
