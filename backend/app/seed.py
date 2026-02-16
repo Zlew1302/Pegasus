@@ -12,6 +12,8 @@ RESEARCH_AGENT_ID = "agent-research-001"
 PLANNING_AGENT_ID = "agent-planning-001"
 WRITING_AGENT_ID = "agent-writing-001"
 QA_AGENT_ID = "agent-qa-001"
+WORKFLOW_PLANNING_AGENT_ID = "agent-workflow-planning-001"
+ORCHESTRATOR_AGENT_ID = "agent-orchestrator-001"
 
 RESEARCH_SYSTEM_PROMPT = """Du bist ein erfahrener Research Agent im Pegasus-System.
 Deine Aufgabe ist es, gruendliche Recherchen durchzufuehren und strukturierte Berichte zu erstellen.
@@ -120,33 +122,33 @@ async def seed_essentials():
 
 
 async def _ensure_new_agents(session):
-    """Stellt sicher, dass Writing Agent und QA Agent existieren."""
+    """Stellt sicher, dass neue Agent-Typen existieren (idempotent)."""
     new_agents = {
-        WRITING_AGENT_ID: {
-            "name": "Writing Agent",
+        WORKFLOW_PLANNING_AGENT_ID: {
+            "name": "Workflow Planning Agent",
             "avatar": "bot",
-            "description": "Erstellt hochwertige Texte, Dokumente und Berichte basierend auf Projekt-Kontext und Anforderungen.",
-            "capabilities": '["content_creation", "copywriting", "documentation", "editing"]',
-            "tools": '["read_project_context", "knowledge_search"]',
-            "system_prompt": "Du bist ein erfahrener Texter. Erstelle hochwertige, gut strukturierte Texte auf Deutsch.",
+            "description": "Erstellt strukturierte Arbeitspläne als JSON für den KI-Planungs-Workflow. Gibt Vorschläge zurück, die vom Benutzer reviewt werden.",
+            "capabilities": '["project_planning", "task_decomposition", "agent_recommendation", "milestone_planning"]',
+            "tools": '["read_project_context", "search_knowledge"]',
+            "system_prompt": "Du bist ein erfahrener Projektplanungs-Experte. Erstelle strukturierte Arbeitspläne als JSON.",
             "model": "claude-sonnet-4-20250514",
-            "temperature": 0.4,
+            "temperature": 0.3,
             "max_tokens": 4096,
-            "max_concurrent_instances": 5,
+            "max_concurrent_instances": 3,
             "trust_level": "propose",
             "is_custom": False,
         },
-        QA_AGENT_ID: {
-            "name": "QA Agent",
+        ORCHESTRATOR_AGENT_ID: {
+            "name": "Orchestrator Agent",
             "avatar": "bot",
-            "description": "Fuehrt Qualitaetssicherung durch: generiert Testfaelle, analysiert Risiken und erstellt QA-Reports.",
-            "capabilities": '["test_generation", "quality_assurance", "risk_analysis", "documentation"]',
-            "tools": '["read_project_context", "knowledge_search", "manage_task"]',
-            "system_prompt": "Du bist ein erfahrener QA-Spezialist. Analysiere systematisch und gruendlich.",
+            "description": "Analysiert Aufgaben und delegiert sie automatisch an spezialisierte Sub-Agenten. Nutzt MCP-Integrationen für externe Tools.",
+            "capabilities": '["task_analysis", "agent_delegation", "workflow_coordination", "mcp_integration"]',
+            "tools": '["read_project_context", "search_knowledge", "manage_task", "web_search", "delegate_to_agent"]',
+            "system_prompt": "Du bist der KI-Orchestrator. Analysiere Aufgaben und delegiere sie an die passenden Sub-Agenten.",
             "model": "claude-sonnet-4-20250514",
-            "temperature": 0.2,
-            "max_tokens": 4096,
-            "max_concurrent_instances": 5,
+            "temperature": 0.3,
+            "max_tokens": 8192,
+            "max_concurrent_instances": 3,
             "trust_level": "propose",
             "is_custom": False,
         },

@@ -17,7 +17,8 @@ from app.routers import (
     activity, agents, approvals, attachments, commands, comments, dashboard,
     documents, export, knowledge, notifications, outputs, profile,
     projects, saved_views, search, spotlight, stream, tasks, teams,
-    templates, time_tracking, todos, tracks, webhooks,
+    templates, time_tracking, todos, tracks, webhooks, planning_workflow, mcp,
+    orchestrator,
 )
 
 # Initialize structured logging before anything else
@@ -88,6 +89,9 @@ app.include_router(time_tracking.router)
 app.include_router(templates.router)
 app.include_router(webhooks.router)
 app.include_router(export.router)
+app.include_router(planning_workflow.router)
+app.include_router(mcp.router)
+app.include_router(orchestrator.router)
 
 
 @app.get("/api/health")

@@ -741,3 +741,106 @@ export const ENTITY_TYPE_COLORS: Record<
   CommunicationChannel: { color: "text-pink-400", bg: "bg-pink-500/10" },
   Project: { color: "text-indigo-400", bg: "bg-indigo-500/10" },
 };
+
+// ── KI-Planungs-Workflow ──────────────────────────────────────
+
+export type PlanningSessionStatus =
+  | "input"
+  | "searching"
+  | "generating"
+  | "review"
+  | "confirmed"
+  | "cancelled";
+
+export interface PlanningSession {
+  id: string;
+  project_id: string;
+  user_id: string;
+  status: PlanningSessionStatus;
+  input_mode: string;
+  user_notes: string | null;
+  knowledge_doc_ids: string | null;
+  web_search_topics: string | null;
+  web_search_results: string | null;
+  auto_context: boolean;
+  generated_plan: string | null;
+  confirmed_plan: string | null;
+  agent_instance_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PlanTaskSuggestion {
+  title: string;
+  description: string | null;
+  priority: string;
+  agent_type_id: string | null;
+  agent_type_name: string | null;
+  estimated_duration_minutes: number | null;
+  tags: string | null;
+  acceptance_criteria: string | null;
+  milestone: string | null;
+  order: number;
+}
+
+export interface MilestoneSuggestion {
+  name: string;
+  description: string | null;
+}
+
+export interface GeneratedPlan {
+  tasks: PlanTaskSuggestion[];
+  milestones: MilestoneSuggestion[];
+  summary: string;
+  timeline_notes: string | null;
+}
+
+export interface ExaSearchResult {
+  title: string;
+  url: string;
+  snippet: string;
+  score: number | null;
+}
+
+// ── MCP Server Types ─────────────────────────────────────────
+
+export interface McpServer {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  server_url: string;
+  auth_type: string;
+  icon: string;
+  is_connected: boolean;
+  available_tools: string | null;
+  last_health_check: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface McpServerListItem {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  icon: string;
+  is_connected: boolean;
+  server_url: string;
+  auth_type: string;
+  last_health_check: string | null;
+  tool_count: number;
+}
+
+export interface McpToolDefinition {
+  name: string;
+  description: string;
+  input_schema: Record<string, unknown> | null;
+}
+
+// ── Orchestrator Types ───────────────────────────────────────
+
+export interface OrchestratorStartResponse {
+  instance_id: string;
+  task_id: string;
+}

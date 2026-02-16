@@ -25,3 +25,5 @@ from app.models.attachment import TaskAttachment  # noqa: E402, F401
 from app.models.time_entry import TimeEntry  # noqa: E402, F401
 from app.models.task_template import TaskTemplate  # noqa: E402, F401
 from app.models.webhook import Webhook, WebhookDelivery  # noqa: E402, F401
+from app.models.planning_session import PlanningSession  # noqa: E402, F401
+from app.models.mcp_server import McpServer  # noqa: E402, F401

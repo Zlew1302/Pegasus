@@ -13,6 +13,9 @@ import { spawnAgent } from "@/hooks/use-agents";
 import { apiFetch, fetcher } from "@/lib/api";
 import useSWR from "swr";
 import type { Task, TaskStatus, TaskOutput, Approval } from "@/types";
+import { Sparkles, Wand2 } from "lucide-react";
+import { OrchestratorPanel } from "@/components/orchestrator/orchestrator-panel";
+import { PlanningWizard } from "@/components/planning/planning-wizard";
 
 interface ProjectBoardTabProps {
   projectId: string;
@@ -32,6 +35,8 @@ export function ProjectBoardTab({ projectId }: ProjectBoardTabProps) {
     tags: [],
   });
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
+  const [showOrchestrator, setShowOrchestrator] = useState(false);
+  const [showPlanningWizard, setShowPlanningWizard] = useState(false);
 
   // Filter tasks
   const filteredTasks = useMemo(() => {
@@ -176,13 +181,33 @@ export function ProjectBoardTab({ projectId }: ProjectBoardTabProps) {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      {/* Search + Filter + Bulk Actions */}
+      {/* Search + Filter + KI Buttons + Bulk Actions */}
       <div className="space-y-2 px-4 pt-3">
-        <SearchBar
-          value={filter.search}
-          onChange={(search) => setFilter({ ...filter, search })}
-          placeholder="Tasks durchsuchen..."
-        />
+        <div className="flex items-center gap-2">
+          <div className="flex-1">
+            <SearchBar
+              value={filter.search}
+              onChange={(search) => setFilter({ ...filter, search })}
+              placeholder="Tasks durchsuchen..."
+            />
+          </div>
+          <div className="flex shrink-0 gap-2">
+            <button
+              onClick={() => setShowOrchestrator(true)}
+              className="flex items-center gap-1.5 rounded-lg bg-[hsl(var(--accent-orange))] px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-[hsl(var(--accent-orange))]/90"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              KI-Assistent
+            </button>
+            <button
+              onClick={() => setShowPlanningWizard(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-[hsl(var(--accent-orange))]/30 px-3 py-2 text-xs font-medium text-[hsl(var(--accent-orange))] transition-colors hover:bg-[hsl(var(--accent-orange))]/10"
+            >
+              <Wand2 className="h-3.5 w-3.5" />
+              KI-Planung
+            </button>
+          </div>
+        </div>
         <AdvancedFilterBar
           projectId={projectId}
           filter={filter}
@@ -231,6 +256,27 @@ export function ProjectBoardTab({ projectId }: ProjectBoardTabProps) {
         onOpenChange={setShowTaskForm}
         onSubmit={handleSubmitTask}
         defaultStatus={taskFormStatus}
+      />
+
+      {/* KI-Assistent (Orchestrator) Panel */}
+      <OrchestratorPanel
+        open={showOrchestrator}
+        onClose={() => {
+          setShowOrchestrator(false);
+          mutateTasks();
+        }}
+        projectId={projectId}
+      />
+
+      {/* KI-Planung Wizard */}
+      <PlanningWizard
+        open={showPlanningWizard}
+        onOpenChange={setShowPlanningWizard}
+        projectId={projectId}
+        onPlanConfirmed={() => {
+          setShowPlanningWizard(false);
+          mutateTasks();
+        }}
       />
     </div>
   );
